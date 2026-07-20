@@ -1,6 +1,8 @@
 # Cantiere Media PWA
 
-Versione 1.0.3.
+Versione 1.0.4.
+
+Su Android, quando sono selezionati insieme foto e video, l'app li propone in due invii separati. Questa scelta evita il limite di WhatsApp che puo rifiutare allegati misti e mostrare il messaggio "Non puoi inviare un messaggio vuoto".
 
 PWA mobile-first per gestire foto e video dei cantieri senza un backend obbligatorio. Dopo il primo caricamento l'application shell, il login e tutti i media locali funzionano offline. Il progetto usa HTML, CSS e JavaScript Vanilla, senza dipendenze runtime esterne.
 
@@ -99,7 +101,7 @@ I risultati della verifica della release e la checklist per il collaudo su dispo
 
 ## Aggiornamenti
 
-Il Service Worker controlla gli aggiornamenti all'avvio e quando l'app torna visibile. Dalla versione 1.0.3 il file del Service Worker viene richiesto senza cache HTTP; quando una nuova shell e pronta viene attivata automaticamente, le cache obsolete vengono rimosse e l'app viene ricaricata una sola volta. Avviare gli aggiornamenti quando non sono in corso upload o cancellazioni.
+Il Service Worker controlla gli aggiornamenti all'avvio e quando l'app torna visibile. Dalla versione 1.0.4 il file del Service Worker viene richiesto senza cache HTTP; quando una nuova shell e pronta viene attivata automaticamente, le cache obsolete vengono rimosse e l'app viene ricaricata una sola volta. Avviare gli aggiornamenti quando non sono in corso upload o cancellazioni.
 
 ## Vincoli operativi importanti
 
@@ -107,7 +109,7 @@ L'architettura e preparata per cataloghi molto grandi e mantiene soltanto una fi
 
 Il parser EXIF integrato legge `DateTimeOriginal` dai JPEG. Per formati come HEIC/HEIF, quando i metadati non sono leggibili dal browser, viene usata la data del file.
 
-La release 1.0.3 non sincronizza dispositivi diversi e non include ancora un backup completo. Prima di usare l'app come unica copia di dati aziendali non sostituibili, definire e collaudare una procedura di backup o aggiungere una sincronizzazione opzionale.
+La release 1.0.4 non sincronizza dispositivi diversi e non include ancora un backup completo. Prima di usare l'app come unica copia di dati aziendali non sostituibili, definire e collaudare una procedura di backup o aggiungere una sincronizzazione opzionale.
 
 Il PIN e un controllo di accesso locale, non una cifratura dei media. Proteggere il dispositivo con blocco schermo e cifratura di sistema.
 

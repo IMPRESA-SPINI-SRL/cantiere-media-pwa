@@ -1,28 +1,30 @@
 import {
   APP_VERSION,
+  MEDIA_TYPES,
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.0.3';
+} from './config.js?v=1.0.4';
 import {
   bootstrapAdministrator,
   login,
   logout,
   updateCurrentUserSnapshot,
-} from './auth.js?v=1.0.3';
+} from './auth.js?v=1.0.4';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.0.3';
-import { FilterController, isFavoriteView, viewModeLabel } from './filters.js?v=1.0.3';
-import { GalleryController } from './gallery.js?v=1.0.3';
+} from './db.js?v=1.0.4';
+import { FilterController, isFavoriteView, viewModeLabel } from './filters.js?v=1.0.4';
+import { GalleryController } from './gallery.js?v=1.0.4';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
+  partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.0.3';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.0.3';
+} from './media.js?v=1.0.4';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.0.4';
 import {
   createSite,
   deleteSiteInBatches,
@@ -30,13 +32,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.0.3';
-import { UploadController } from './upload.js?v=1.0.3';
+} from './sites.js?v=1.0.4';
+import { UploadController } from './upload.js?v=1.0.4';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.0.3';
+} from './users.js?v=1.0.4';
 import {
   byId,
   closeDialog,
@@ -45,9 +47,9 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.0.3';
-import { debounce, formatBytes } from './utils.js?v=1.0.3';
-import { ViewerController } from './viewer.js?v=1.0.3';
+} from './ui.js?v=1.0.4';
+import { debounce, formatBytes } from './utils.js?v=1.0.4';
+import { ViewerController } from './viewer.js?v=1.0.4';
 
 let currentUser = null;
 let sitesCache = [];
@@ -334,12 +336,85 @@ function updateSelectionToolbar(items) {
   byId('selection-count').textContent = String(items.length);
 }
 
+function pluralLabel(count, singular, plural) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function shareMixedSelection(photos, videos) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'modal mixed-share-dialog';
+  dialog.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Condivisione foto e video</h2>
+      </div>
+      <p class="muted">WhatsApp su Android non accetta foto e video nello stesso invio. Condividili in due passaggi.</p>
+      <div class="upload-actions">
+        <button type="button" class="upload-action" data-share-photos></button>
+        <button type="button" class="upload-action" data-share-videos></button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="button button-text" data-share-close>Chiudi</button>
+      </div>
+    </div>`;
+  document.body.append(dialog);
+
+  const photoButton = dialog.querySelector('[data-share-photos]');
+  const videoButton = dialog.querySelector('[data-share-videos]');
+  const closeButton = dialog.querySelector('[data-share-close]');
+  photoButton.textContent = `Condividi ${pluralLabel(photos.length, 'foto', 'foto')}`;
+  videoButton.textContent = `Condividi ${pluralLabel(videos.length, 'video', 'video')}`;
+
+  return new Promise((resolve) => {
+    const completed = new Set();
+
+    const finish = () => {
+      closeDialog(dialog);
+      dialog.remove();
+      resolve();
+    };
+
+    const shareGroup = async (type, items, button) => {
+      button.disabled = true;
+      try {
+        await shareMediaItems(items);
+        completed.add(type);
+        button.textContent = type === MEDIA_TYPES.PHOTO ? 'Foto condivise ✓' : 'Video condivisi ✓';
+        if (completed.size === 2) {
+          showToast('Foto e video condivisi in due invii.');
+          setTimeout(finish, 350);
+        }
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          showToast(error?.message ?? 'Condivisione non riuscita.', { type: 'warning' });
+        }
+        button.disabled = false;
+      }
+    };
+
+    photoButton.addEventListener('click', () => shareGroup(MEDIA_TYPES.PHOTO, photos, photoButton));
+    videoButton.addEventListener('click', () => shareGroup(MEDIA_TYPES.VIDEO, videos, videoButton));
+    closeButton.addEventListener('click', finish, { once: true });
+    dialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      finish();
+    }, { once: true });
+
+    openDialog(dialog);
+  });
+}
+
 async function shareSelection() {
   const items = galleryController.getSelectedItems();
   if (!items.length) return;
   const button = byId('selection-share');
   button.disabled = true;
   try {
+    const { photos, videos } = partitionMediaByType(items);
+    if (photos.length && videos.length) {
+      await shareMixedSelection(photos, videos);
+      return;
+    }
     await shareMediaItems(items);
   } catch (error) {
     if (error?.name === 'AbortError') return;

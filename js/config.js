@@ -1,5 +1,5 @@
 export const APP_NAME = 'Cantiere Media';
-export const APP_VERSION = '1.0.3';
+export const APP_VERSION = '1.0.4';
 export const DB_NAME = 'cantiere-media-db';
 export const DB_VERSION = 1;
 

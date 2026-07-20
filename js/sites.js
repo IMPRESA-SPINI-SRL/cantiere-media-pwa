@@ -1,4 +1,4 @@
-import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.0.3';
+import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.0.4';
 import {
   countMediaForSite,
   deleteMediaCascade,
@@ -8,9 +8,9 @@ import {
   getMediaIdsForSite,
   getRecord,
   putRecord,
-} from './db.js?v=1.0.3';
-import { canManageSites } from './permissions.js?v=1.0.3';
-import { createId, normalizeText, sleep } from './utils.js?v=1.0.3';
+} from './db.js?v=1.0.4';
+import { canManageSites } from './permissions.js?v=1.0.4';
+import { createId, normalizeText, sleep } from './utils.js?v=1.0.4';
 
 async function requireAdministrator(actor) {
   const storedActor = actor?.id

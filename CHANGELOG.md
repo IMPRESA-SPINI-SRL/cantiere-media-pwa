@@ -3,6 +3,14 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
+## [1.0.4] - 2026-07-20
+
+### Corretto
+
+- Gestita la selezione mista di foto e video su Android/WhatsApp.
+- In caso di selezione mista l'app propone due invii distinti, uno per le foto e uno per i video.
+- Evitato il passaggio a WhatsApp di un allegato misto che veniva interpretato come messaggio vuoto.
+
 ## [1.0.3] - 2026-07-20
 
 ### Corretto

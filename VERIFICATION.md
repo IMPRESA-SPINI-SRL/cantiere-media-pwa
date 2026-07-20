@@ -1,4 +1,4 @@
-# Verifica release 1.0.3
+# Verifica release 1.0.4
 
 Data: 2026-07-20.
 
@@ -51,6 +51,14 @@ La capacità effettiva deve essere misurata sui dispositivi scelti dall'impresa,
 1. Avviare la release sulla stessa origine usata in precedenza.
 2. Aprire `/repair.html`.
 3. Verificare il reindirizzamento automatico all'app.
-4. Controllare che il menu riporti `Versione 1.0.3`.
+4. Controllare che il menu riporti `Versione 1.0.4`.
 5. Verificare che utenti, cantieri e media preesistenti siano ancora disponibili.
 6. Aprire un video e controllare il pulsante centrale `▶`, il comando inferiore Play/Pausa, la timeline e i tempi.
+
+## Condivisione mista Android
+
+1. Selezionare almeno una foto e un video.
+2. Premere Condividi.
+3. Verificare che compaiano due pulsanti distinti per foto e video.
+4. Condividere prima un gruppo e poi l'altro tramite WhatsApp.
+5. Verificare che entrambi gli invii contengano gli allegati corretti.

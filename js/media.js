@@ -1,4 +1,4 @@
-import { LIMITS, MEDIA_TYPES, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.0.3';
+import { LIMITS, MEDIA_TYPES, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.0.4';
 import {
   deleteMediaAuthorizedBatch,
   getMediaBlob,
@@ -6,8 +6,8 @@ import {
   getThumbnailBlob,
   putMediaWithBlob,
   putThumbnailBlob,
-} from './db.js?v=1.0.3';
-import { readExifDate } from './exif.js?v=1.0.3';
+} from './db.js?v=1.0.4';
+import { readExifDate } from './exif.js?v=1.0.4';
 import {
   createId,
   fileExtension,
@@ -15,7 +15,7 @@ import {
   formatDateTime,
   formatDuration,
   isQuotaError,
-} from './utils.js?v=1.0.3';
+} from './utils.js?v=1.0.4';
 
 const thumbnailJobs = new Map();
 const thumbnailQueue = [];
@@ -359,6 +359,14 @@ export async function getMediaFile(media) {
     type: media.mimeType || blob.type,
     lastModified: media.takenAt || media.uploadDate,
   });
+}
+
+export function partitionMediaByType(items) {
+  return items.reduce((groups, media) => {
+    if (media?.mediaType === MEDIA_TYPES.PHOTO) groups.photos.push(media);
+    if (media?.mediaType === MEDIA_TYPES.VIDEO) groups.videos.push(media);
+    return groups;
+  }, { photos: [], videos: [] });
 }
 
 export async function shareMediaItems(items) {

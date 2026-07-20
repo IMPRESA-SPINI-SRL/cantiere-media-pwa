@@ -5,9 +5,9 @@ import {
   MEDIA_FILTERS,
   SITE_STATUSES,
   STORE_NAMES,
-} from './config.js?v=1.0.3';
-import { canDeleteMedia } from './permissions.js?v=1.0.3';
-import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.0.3';
+} from './config.js?v=1.0.4';
+import { canDeleteMedia } from './permissions.js?v=1.0.4';
+import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.0.4';
 
 let databasePromise = null;
 

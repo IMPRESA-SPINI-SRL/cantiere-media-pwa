@@ -2,7 +2,7 @@ import {
   MEDIA_FILTERS,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.0.3';
+} from './config.js?v=1.0.4';
 
 export function isFavoriteView(viewMode) {
   return [VIEW_MODES.FAVORITE_ARCHIVE, VIEW_MODES.FAVORITE_UPLOADS].includes(viewMode);

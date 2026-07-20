@@ -1,8 +1,8 @@
-import { LIMITS, MEDIA_TYPES } from './config.js?v=1.0.3';
-import { queryMediaPage } from './db.js?v=1.0.3';
-import { favoriteContextForView, queryFavorites } from './favorites.js?v=1.0.3';
-import { isFavoriteView } from './filters.js?v=1.0.3';
-import { getOrCreateThumbnail, mediaDescription } from './media.js?v=1.0.3';
+import { LIMITS, MEDIA_TYPES } from './config.js?v=1.0.4';
+import { queryMediaPage } from './db.js?v=1.0.4';
+import { favoriteContextForView, queryFavorites } from './favorites.js?v=1.0.4';
+import { isFavoriteView } from './filters.js?v=1.0.4';
+import { getOrCreateThumbnail, mediaDescription } from './media.js?v=1.0.4';
 
 const LONG_PRESS_MS = 480;
 const MOVE_TOLERANCE = 12;

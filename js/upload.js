@@ -1,6 +1,6 @@
-import { getStorageEstimate, requestPersistentStorage, saveMediaFile } from './media.js?v=1.0.3';
-import { formatBytes } from './utils.js?v=1.0.3';
-import { closeDialog, openDialog, showToast } from './ui.js?v=1.0.3';
+import { getStorageEstimate, requestPersistentStorage, saveMediaFile } from './media.js?v=1.0.4';
+import { formatBytes } from './utils.js?v=1.0.4';
+import { closeDialog, openDialog, showToast } from './ui.js?v=1.0.4';
 
 export class UploadController {
   constructor({
