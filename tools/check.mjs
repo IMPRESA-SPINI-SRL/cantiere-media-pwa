@@ -1,0 +1,155 @@
+import { spawnSync } from 'node:child_process';
+import { readdir, readFile, stat } from 'node:fs/promises';
+import { dirname, extname, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+async function collectJavaScript(directory) {
+  const result = [];
+  for (const name of await readdir(directory)) {
+    if (name === 'node_modules') continue;
+    const path = resolve(directory, name);
+    const information = await stat(path);
+    if (information.isDirectory()) result.push(...await collectJavaScript(path));
+    else if (name.endsWith('.js') || name.endsWith('.mjs')) result.push(path);
+  }
+  return result;
+}
+
+async function assertPath(path, label = relative(root, path)) {
+  try {
+    await stat(path);
+  } catch {
+    throw new Error(`File mancante: ${label}`);
+  }
+}
+
+function relativeImports(source) {
+  const imports = [];
+  const pattern = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"](\.{1,2}\/[^'"]+)['"]/g;
+  for (const match of source.matchAll(pattern)) imports.push(match[1]);
+  return imports;
+}
+
+function readPngSize(buffer) {
+  const signature = '89504e470d0a1a0a';
+  if (buffer.subarray(0, 8).toString('hex') !== signature || buffer.length < 24) {
+    throw new Error('PNG non valido.');
+  }
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20),
+  };
+}
+
+const files = await collectJavaScript(root);
+for (const file of files) {
+  const check = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
+  if (check.status !== 0) {
+    console.error(check.stderr || check.stdout);
+    process.exit(check.status || 1);
+  }
+
+  const source = await readFile(file, 'utf8');
+  for (const specifier of relativeImports(source)) {
+    const importedPath = resolve(dirname(file), specifier.split(/[?#]/, 1)[0]);
+    await assertPath(importedPath, `${relative(root, file)} -> ${specifier}`);
+  }
+}
+
+const manifest = JSON.parse(await readFile(resolve(root, 'manifest.json'), 'utf8'));
+const packageJson = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
+const configSource = await readFile(resolve(root, 'js/config.js'), 'utf8');
+const appSource = await readFile(resolve(root, 'js/app.js'), 'utf8');
+const databaseSource = await readFile(resolve(root, 'js/db.js'), 'utf8');
+const indexSource = await readFile(resolve(root, 'index.html'), 'utf8');
+const serviceWorkerSource = await readFile(resolve(root, 'service-worker.js'), 'utf8');
+const changelog = await readFile(resolve(root, 'CHANGELOG.md'), 'utf8');
+const version = packageJson.version;
+
+if (!configSource.includes(`APP_VERSION = '${version}'`)) {
+  throw new Error('Versione non allineata tra package.json e js/config.js.');
+}
+if (!serviceWorkerSource.includes(`APP_VERSION = '${version}'`)) {
+  throw new Error('Versione non allineata tra package.json e service-worker.js.');
+}
+if (!changelog.includes(`## [${version}]`)) {
+  throw new Error('La versione corrente non e registrata in CHANGELOG.md.');
+}
+if (appSource.includes('deleteMediaCascade')) {
+  throw new Error('L\'interfaccia non deve bypassare i controlli autorizzativi di eliminazione media.');
+}
+if (/getAllRecords\(\s*STORE_NAMES\.MEDIA\s*\)/.test(databaseSource)) {
+  throw new Error('E vietata una scansione completa dello store media.');
+}
+if (!indexSource.includes('<option value="">Seleziona un cantiere...</option>')) {
+  throw new Error('Il filtro cantiere deve iniziare senza una selezione globale.');
+}
+if (!indexSource.includes('<option value="photo">Solo foto</option>')) {
+  throw new Error('Il filtro media deve mantenere Solo foto come prima opzione.');
+}
+
+if (!indexSource.includes('id="viewer-video-center-toggle"')
+  || !indexSource.includes('id="viewer-video-controls"')
+  || !indexSource.includes('id="viewer-video-control-button"')) {
+  throw new Error('I controlli video statici devono essere presenti nel viewer HTML.');
+}
+if (!indexSource.includes(`./js/bootstrap-${version}.js`)) {
+  throw new Error('Il bootstrap versionato non e collegato in index.html.');
+}
+
+const required = [
+  'index.html',
+  'manifest.json',
+  'service-worker.js',
+  'repair.html',
+  `js/bootstrap-${version}.js`,
+  'css/style.css',
+  'README.md',
+  'ARCHITECTURE.md',
+  'CHANGELOG.md',
+  'SECURITY.md',
+  'VERIFICATION.md',
+  'icons/icon-180.png',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
+  'icons/icon-maskable-512.png',
+];
+for (const item of required) await assertPath(resolve(root, item));
+
+const shellBlock = /const APP_SHELL = \[([\s\S]*?)\];/.exec(serviceWorkerSource)?.[1];
+if (!shellBlock) throw new Error('APP_SHELL non trovato nel Service Worker.');
+const shellEntries = new Set();
+for (const match of shellBlock.matchAll(/['"](\.\/[^'"]*)['"]/g)) {
+  const entry = match[1];
+  shellEntries.add(entry);
+  const cleanEntry = entry.split(/[?#]/, 1)[0];
+  const target = cleanEntry === './' ? resolve(root, 'index.html') : resolve(root, cleanEntry.slice(2));
+  await assertPath(target, `APP_SHELL ${entry}`);
+}
+
+for (const name of await readdir(resolve(root, 'js'))) {
+  if (!name.endsWith('.js')) continue;
+  const entry = `./js/${name}`;
+  const included = [...shellEntries].some((candidate) => candidate.split(/[?#]/, 1)[0] === entry);
+  if (!included) {
+    throw new Error(`Modulo applicativo non incluso nell'APP_SHELL: ${entry}`);
+  }
+}
+
+for (const icon of manifest.icons ?? []) {
+  const iconPath = resolve(root, String(icon.src).replace(/^\.\//, ''));
+  await assertPath(iconPath, `manifest icon ${icon.src}`);
+  if (extname(iconPath).toLowerCase() === '.png' && /^\d+x\d+$/.test(icon.sizes)) {
+    const [expectedWidth, expectedHeight] = icon.sizes.split('x').map(Number);
+    const actual = readPngSize(await readFile(iconPath));
+    if (actual.width !== expectedWidth || actual.height !== expectedHeight) {
+      throw new Error(`Dimensione errata per ${icon.src}: ${actual.width}x${actual.height}.`);
+    }
+  }
+}
+
+console.log(`Controllo completato: ${files.length} file JavaScript validi.`);
+console.log(`Versione coerente: ${version}.`);
+console.log(`Asset PWA e ${manifest.icons?.length ?? 0} icone verificati.`);

@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#315c52">
+  <meta name="color-scheme" content="light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Cantiere Media">
+  <meta name="format-detection" content="telephone=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Cantiere Media</title>
+  <link rel="manifest" href="./manifest.json?v=1.0.3">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <link rel="icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./css/style.css?v=1.0.3">
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true" focusable="false">
+    <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="M6.4 5L12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></symbol>
+    <symbol id="icon-share" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.4a3 3 0 0 0 0-1.6l6.7-3.4A3 3 0 1 0 15 7l-6.7 3.4a3 3 0 1 0 0 5.2L15 19a3 3 0 1 0 3-3z"/></symbol>
+    <symbol id="icon-delete" viewBox="0 0 24 24"><path d="M7 21a2 2 0 0 1-2-2V7h14v12a2 2 0 0 1-2 2zm1-3h2V10H8zm6 0h2V10h-2zM4 4h5l1-1h4l1 1h5v2H4z"/></symbol>
+    <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M11 16h2V8l3.5 3.5 1.4-1.4L12 4.2 6.1 10.1l1.4 1.4L11 8zm-6 4h14v-2H5z"/></symbol>
+    <symbol id="icon-star" viewBox="0 0 24 24"><path d="M12 2.7l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5-4.7-4.6 6.5-.9z"/></symbol>
+    <symbol id="icon-camera" viewBox="0 0 24 24"><path d="M9 4l1.3-2h3.4L15 4h4a2 2 0 0 1 2 2v13H3V6a2 2 0 0 1 2-2zm3 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0-2a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></symbol>
+    <symbol id="icon-video" viewBox="0 0 24 24"><path d="M3 5h13a2 2 0 0 1 2 2v2.2L22 7v10l-4-2.2V17a2 2 0 0 1-2 2H3z"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></symbol>
+    <symbol id="icon-gallery" viewBox="0 0 24 24"><path d="M3 4h18v16H3zm2 2v12h14V6zm1 10l3.5-4 2.5 3 2-2.5 4 5.5H6zm8-7a2 2 0 1 1 4 0 2 2 0 0 1-4 0z"/></symbol>
+    <symbol id="icon-sites" viewBox="0 0 24 24"><path d="M4 21V3h10v5h6v13h-6v-3H9v3zm2-2h1v-3h7v3h1V10h-3V5H6zm2-11h2v2H8zm0 4h2v2H8zm5 0h2v2h-2zm4 0h1v2h-1zm0 4h1v2h-1z"/></symbol>
+    <symbol id="icon-users" viewBox="0 0 24 24"><path d="M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm6-1a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 21v-2c0-3.3 3.1-5 7-5s7 1.7 7 5v2zm14.5 0v-2c0-1.5-.6-2.8-1.7-3.8 4.1.2 7.2 1.8 7.2 4.8v1z"/></symbol>
+    <symbol id="icon-logout" viewBox="0 0 24 24"><path d="M10 4H4v16h6v-2H6V6h4zm4.6 3.4L13.2 8.8l2.2 2.2H9v2h6.4l-2.2 2.2 1.4 1.4 4.6-4.6z"/></symbol>
+    <symbol id="icon-install" viewBox="0 0 24 24"><path d="M11 3h2v9l3-3 1.4 1.4L12 15.8l-5.4-5.4L8 9l3 3zM4 18h16v3H4z"/></symbol>
+  </svg>
+
+  <noscript>Questa applicazione richiede JavaScript.</noscript>
+
+  <section id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <div class="brand-mark" aria-hidden="true">CM</div>
+      <h1>Cantiere Media</h1>
+      <p class="muted">Foto e video di cantiere, disponibili offline.</p>
+
+      <form id="setup-form" hidden>
+        <h2>Primo avvio</h2>
+        <p>Crea il primo amministratore del dispositivo.</p>
+        <label class="field">
+          <span>Nome</span>
+          <input id="setup-name" name="name" autocomplete="name" required maxlength="80">
+        </label>
+        <label class="field">
+          <span>PIN</span>
+          <input id="setup-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" required maxlength="8">
+        </label>
+        <label class="field">
+          <span>Conferma PIN</span>
+          <input id="setup-pin-confirm" name="pinConfirm" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" required maxlength="8">
+        </label>
+        <button class="button button-primary button-block" type="submit">Crea amministratore</button>
+      </form>
+
+      <form id="login-form" hidden>
+        <h2>Accesso</h2>
+        <label class="field">
+          <span>Utente</span>
+          <select id="login-user" required></select>
+        </label>
+        <label class="field">
+          <span>PIN</span>
+          <input id="login-pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" required maxlength="8">
+        </label>
+        <button class="button button-primary button-block" type="submit">Entra</button>
+      </form>
+      <p id="auth-error" class="form-error" hidden></p>
+    </div>
+  </section>
+
+  <section id="app-screen" class="app-screen" hidden>
+    <header class="app-bar">
+      <button id="menu-button" class="icon-button" type="button" aria-label="Apri menu">
+        <svg><use href="#icon-menu"></use></svg>
+      </button>
+      <div class="app-bar-title">
+        <h1 id="view-title">Archivio</h1>
+        <span id="connection-status" class="connection-status" aria-live="polite"></span>
+      </div>
+      <span id="current-user-name" class="current-user-name"></span>
+    </header>
+
+    <div id="selection-toolbar" class="selection-toolbar" hidden>
+      <button id="selection-close" class="icon-button" type="button" aria-label="Termina selezione">
+        <svg><use href="#icon-close"></use></svg>
+      </button>
+      <strong id="selection-count">0</strong>
+      <span class="selection-spacer"></span>
+      <button id="selection-share" class="icon-button" type="button" aria-label="Condividi selezione">
+        <svg><use href="#icon-share"></use></svg>
+      </button>
+      <button id="selection-delete" class="icon-button" type="button" aria-label="Elimina selezione">
+        <svg><use href="#icon-delete"></use></svg>
+      </button>
+    </div>
+
+    <main class="app-main">
+      <form id="filter-form" class="filter-panel" autocomplete="off">
+        <label class="field field-site">
+          <span>Cantiere</span>
+          <select id="site-filter" required>
+            <option value="">Seleziona un cantiere...</option>
+          </select>
+        </label>
+        <div class="filter-row">
+          <label class="field">
+            <span>Foto / Video</span>
+            <select id="media-filter">
+              <option value="photo">Solo foto</option>
+              <option value="video">Solo video</option>
+              <option value="both">Foto e video</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Autore</span>
+            <select id="author-filter">
+              <option value="all">Tutti</option>
+            </select>
+          </label>
+        </div>
+        <label class="field field-date">
+          <span>Data</span>
+          <input id="date-filter" type="date">
+        </label>
+      </form>
+
+      <p id="gallery-status" class="gallery-status">Seleziona un cantiere per visualizzare foto e video.</p>
+      <div id="gallery" class="gallery" aria-live="polite"></div>
+      <div id="gallery-sentinel" class="gallery-sentinel" hidden aria-label="Caricamento altri media">
+        <span class="spinner"></span>
+      </div>
+    </main>
+
+    <button id="upload-fab" class="fab" type="button" aria-label="Carica foto o video">
+      <svg><use href="#icon-upload"></use></svg>
+    </button>
+  </section>
+
+  <dialog id="menu-dialog" class="menu-dialog">
+    <div class="menu-header">
+      <div>
+        <strong>Cantiere Media</strong>
+        <span id="menu-user-label"></span>
+      </div>
+      <button id="menu-close" class="icon-button" type="button" aria-label="Chiudi menu">
+        <svg><use href="#icon-close"></use></svg>
+      </button>
+    </div>
+    <nav class="menu-list" aria-label="Sezioni">
+      <button class="menu-item" type="button" data-view="archive">Archivio</button>
+      <button class="menu-item" type="button" data-view="my-uploads">I miei upload</button>
+      <button class="menu-item" type="button" data-view="favorite-archive">Preferiti archivio</button>
+      <button class="menu-item" type="button" data-view="favorite-uploads">Preferiti upload</button>
+    </nav>
+    <div id="admin-menu" class="menu-list menu-section" hidden>
+      <span class="menu-section-title">Amministrazione</span>
+      <button id="manage-sites-button" class="menu-item menu-item-icon" type="button">
+        <svg><use href="#icon-sites"></use></svg><span>Gestione cantieri</span>
+      </button>
+      <button id="manage-users-button" class="menu-item menu-item-icon" type="button">
+        <svg><use href="#icon-users"></use></svg><span>Gestione utenti</span>
+      </button>
+    </div>
+    <div class="menu-list menu-section">
+      <button id="install-app-button" class="menu-item menu-item-icon" type="button" hidden>
+        <svg><use href="#icon-install"></use></svg><span>Installa app</span>
+      </button>
+      <button id="logout-button" class="menu-item menu-item-icon" type="button">
+        <svg><use href="#icon-logout"></use></svg><span>Esci</span>
+      </button>
+    </div>
+    <div class="menu-footer">
+      <div id="storage-summary">Spazio: calcolo...</div>
+      <div id="version-label"></div>
+    </div>
+  </dialog>
+
+  <dialog id="upload-dialog" class="modal bottom-sheet">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Carica media</h2>
+        <button id="upload-close" class="icon-button" type="button" aria-label="Chiudi">
+          <svg><use href="#icon-close"></use></svg>
+        </button>
+      </div>
+      <div class="upload-actions">
+        <button id="upload-photo-action" class="upload-action" type="button">
+          <svg><use href="#icon-camera"></use></svg><span>Fotocamera foto</span>
+        </button>
+        <button id="upload-video-action" class="upload-action" type="button">
+          <svg><use href="#icon-video"></use></svg><span>Fotocamera video</span>
+        </button>
+        <button id="upload-gallery-action" class="upload-action" type="button">
+          <svg><use href="#icon-gallery"></use></svg><span>Galleria</span>
+        </button>
+      </div>
+      <div id="upload-progress-wrap" class="upload-progress" hidden>
+        <progress id="upload-progress" value="0" max="1"></progress>
+        <span id="upload-progress-text"></span>
+      </div>
+    </div>
+  </dialog>
+  <input id="photo-input" class="visually-hidden" type="file" accept="image/*" capture="environment">
+  <input id="video-input" class="visually-hidden" type="file" accept="video/*" capture="environment">
+  <input id="gallery-input" class="visually-hidden" type="file" accept="image/*,video/*" multiple>
+
+  <dialog id="sites-dialog" class="modal management-dialog">
+    <div class="modal-card modal-card-tall">
+      <div class="modal-header">
+        <h2>Gestione cantieri</h2>
+        <button id="sites-close" class="icon-button" type="button" aria-label="Chiudi">
+          <svg><use href="#icon-close"></use></svg>
+        </button>
+      </div>
+      <button id="site-create-button" class="button button-primary button-block" type="button">Nuovo cantiere</button>
+      <div id="sites-list" class="management-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="site-editor-dialog" class="modal">
+    <form id="site-editor-form" class="modal-card">
+      <div class="modal-header">
+        <h2 id="site-editor-title">Nuovo cantiere</h2>
+        <button id="site-editor-close" class="icon-button" type="button" aria-label="Chiudi">
+          <svg><use href="#icon-close"></use></svg>
+        </button>
+      </div>
+      <input id="site-editor-id" type="hidden">
+      <label class="field"><span>Nome</span><input id="site-name" required maxlength="120"></label>
+      <label class="field"><span>Cliente</span><input id="site-client" maxlength="120"></label>
+      <label class="field"><span>Indirizzo</span><textarea id="site-address" rows="3" maxlength="300"></textarea></label>
+      <label class="field"><span>Stato</span>
+        <select id="site-status"><option value="active">Attivo</option><option value="completed">Concluso</option></select>
+      </label>
+      <div class="modal-actions">
+        <button id="site-editor-cancel" class="button button-text" type="button">Annulla</button>
+        <button class="button button-primary" type="submit">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="users-dialog" class="modal management-dialog">
+    <div class="modal-card modal-card-tall">
+      <div class="modal-header">
+        <h2>Gestione utenti</h2>
+        <button id="users-close" class="icon-button" type="button" aria-label="Chiudi">
+          <svg><use href="#icon-close"></use></svg>
+        </button>
+      </div>
+      <button id="user-create-button" class="button button-primary button-block" type="button">Nuovo utente</button>
+      <div id="users-list" class="management-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="user-editor-dialog" class="modal">
+    <form id="user-editor-form" class="modal-card">
+      <div class="modal-header">
+        <h2 id="user-editor-title">Nuovo utente</h2>
+        <button id="user-editor-close" class="icon-button" type="button" aria-label="Chiudi">
+          <svg><use href="#icon-close"></use></svg>
+        </button>
+      </div>
+      <input id="user-editor-id" type="hidden">
+      <label class="field"><span>Nome</span><input id="user-name" required maxlength="80"></label>
+      <label class="field"><span>Ruolo</span>
+        <select id="user-role"><option value="user">Utente</option><option value="admin">Amministratore</option></select>
+      </label>
+      <label class="field"><span id="user-pin-label">PIN</span><input id="user-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="new-password"></label>
+      <label id="user-active-field" class="check-field" hidden><input id="user-active" type="checkbox" checked><span>Utente attivo</span></label>
+      <div class="modal-actions">
+        <button id="user-editor-cancel" class="button button-text" type="button">Annulla</button>
+        <button class="button button-primary" type="submit">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="viewer-dialog" class="viewer-dialog">
+    <div class="viewer-shell">
+      <header class="viewer-topbar">
+        <button id="viewer-close" class="icon-button icon-button-light" type="button" aria-label="Chiudi">
+          <svg><use href="#icon-close"></use></svg>
+        </button>
+        <span id="viewer-position" class="viewer-position"></span>
+        <span class="selection-spacer"></span>
+        <button id="viewer-share" class="icon-button icon-button-light" type="button" aria-label="Condividi">
+          <svg><use href="#icon-share"></use></svg>
+        </button>
+        <button id="viewer-favorite" class="icon-button icon-button-light favorite-button" type="button" aria-label="Aggiungi ai preferiti" aria-pressed="false">
+          <svg><use href="#icon-star"></use></svg>
+        </button>
+      </header>
+      <div id="viewer-stage" class="viewer-stage">
+        <div id="viewer-transform" class="viewer-transform"></div>
+      </div>
+      <button id="viewer-video-center-toggle" class="viewer-video-center-toggle" type="button" aria-label="Riproduci video" title="Riproduci video" hidden>▶</button>
+      <div id="viewer-video-controls" class="viewer-video-controls" role="group" aria-label="Controlli video" hidden>
+        <button id="viewer-video-control-button" class="viewer-video-control-button" type="button" aria-label="Riproduci video" title="Riproduci video">▶</button>
+        <input id="viewer-video-progress" class="viewer-video-progress" type="range" min="0" max="1000" step="1" value="0" aria-label="Posizione del video" disabled>
+        <output id="viewer-video-time" class="viewer-video-time">0:00 / --:--</output>
+      </div>
+      <footer id="viewer-caption" class="viewer-caption"></footer>
+    </div>
+  </dialog>
+
+  <div id="busy-overlay" class="busy-overlay" hidden role="status" aria-live="assertive">
+    <span class="spinner spinner-large"></span>
+    <strong id="busy-message">Operazione in corso...</strong>
+  </div>
+  <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+
+  <script type="module" src="./js/bootstrap-1.0.3.js"></script>
+</body>
+</html>

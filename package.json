@@ -1,0 +1,16 @@
+{
+  "name": "cantiere-media-pwa",
+  "version": "1.0.3",
+  "private": true,
+  "type": "module",
+  "description": "PWA offline per la gestione di foto e video dei cantieri.",
+  "scripts": {
+    "start": "node tools/dev-server.mjs",
+    "test": "node --test tests/*.test.js",
+    "check": "node tools/check.mjs",
+    "smoke": "node tools/browser-smoke.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
