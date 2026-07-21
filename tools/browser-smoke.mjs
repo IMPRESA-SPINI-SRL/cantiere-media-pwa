@@ -232,12 +232,20 @@ try {
   await waitForCondition(cdp, "document.getElementById('app-screen').hidden === false", 'application after setup', 20000);
   const emptyState = await cdp.evaluate(`({
     cards: document.querySelectorAll('.gallery-card').length,
-    message: document.getElementById('gallery-status').textContent.trim(),
-    site: document.getElementById('site-filter').value
+    uploadHomeVisible: !document.getElementById('upload-home').hidden,
+    archiveHidden: document.getElementById('archive-view').hidden,
+    site: document.getElementById('upload-site-select').value,
+    directActions: [
+      'home-photo-action',
+      'home-video-action',
+      'home-gallery-action',
+    ].every((id) => Boolean(document.getElementById(id)))
   })`);
   assert(emptyState.cards === 0, 'Media were loaded before choosing a site.');
+  assert(emptyState.uploadHomeVisible && emptyState.archiveHidden,
+    'The direct upload view is not the first operational screen.');
   assert(emptyState.site === '', 'A site was selected automatically.');
-  assert(emptyState.message.startsWith('Seleziona un cantiere'), 'Initial empty-state message is incorrect.');
+  assert(emptyState.directActions, 'Direct upload actions are incomplete.');
 
   await cdp.evaluate(`(() => {
     document.getElementById('menu-button').click();
@@ -254,19 +262,19 @@ try {
     document.getElementById('site-editor-form').requestSubmit();
     return true;
   })()`);
-  await waitForCondition(cdp, "document.getElementById('site-filter').options.length === 2", 'new site in filter');
+  await waitForCondition(cdp, "document.getElementById('site-filter').options.length === 2 && document.getElementById('upload-site-select').options.length === 2", 'new site in upload and archive selectors');
   await cdp.evaluate("document.getElementById('sites-close').click()");
 
   await cdp.evaluate(`(() => {
-    const select = document.getElementById('site-filter');
+    const select = document.getElementById('upload-site-select');
     select.value = select.options[1].value;
     select.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
   })()`);
   await waitForCondition(
     cdp,
-    "document.getElementById('gallery-status').textContent.includes('Nessun media')",
-    'empty selected site',
+    "document.getElementById('site-filter').value === document.getElementById('upload-site-select').value",
+    'synchronized upload destination',
   );
 
   const documentNode = await cdp.send('DOM.getDocument', { depth: -1, pierce: true });
@@ -279,8 +287,14 @@ try {
     files: [resolve(root, 'icons/icon-192.png')],
   });
   await cdp.evaluate("document.getElementById('gallery-input').dispatchEvent(new Event('change', { bubbles: true }))");
-  await waitForCondition(cdp, "document.querySelectorAll('.gallery-card').length === 1", 'uploaded gallery item', 20000);
-  await waitForCondition(cdp, "document.querySelector('.gallery-card.has-thumbnail') !== null", 'lazy thumbnail', 20000);
+  await waitForCondition(
+    cdp,
+    "document.getElementById('upload-home-feedback').classList.contains('is-success')",
+    'direct upload confirmation',
+    20000,
+  );
+  assert(await cdp.evaluate("document.querySelectorAll('.gallery-card').length === 0"),
+    'Uploading from the primary screen must not load the hidden archive.');
 
   const mediaCount = await cdp.evaluate(`new Promise((resolveCount, rejectCount) => {
     const request = indexedDB.open('cantiere-media-db');
@@ -293,6 +307,16 @@ try {
     };
   })`);
   assert(mediaCount === 1, 'Uploaded media was not saved in IndexedDB.');
+
+  await cdp.evaluate("document.getElementById('open-archive-button').click()");
+  await waitForCondition(cdp, "document.querySelectorAll('.gallery-card').length === 1", 'uploaded gallery item', 20000);
+  await waitForCondition(cdp, "document.querySelector('.gallery-card.has-thumbnail') !== null", 'lazy thumbnail', 20000);
+  const datedGallery = await cdp.evaluate(`({
+    dateHeaders: document.querySelectorAll('.gallery-date-row').length,
+    columns: getComputedStyle(document.getElementById('gallery')).getPropertyValue('--gallery-columns').trim()
+  })`);
+  assert(datedGallery.dateHeaders === 1, 'Gallery date header is missing.');
+  assert(datedGallery.columns === '3' || datedGallery.columns === '4', 'Gallery density was not initialized.');
 
   await cdp.evaluate("document.querySelector('.gallery-card').click()");
   await waitForCondition(cdp, "document.getElementById('viewer-dialog').open", 'viewer open');

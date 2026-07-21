@@ -14,7 +14,7 @@ In produzione l'app deve essere pubblicata su HTTPS. Non disattivare la Content 
 
 ## Dati e backup
 
-La release 1.0.4 conserva i dati su un solo dispositivo e non include sincronizzazione o backup completo. La cancellazione dei dati del sito, il ripristino del telefono o alcune politiche di storage del sistema possono rendere i file irrecuperabili.
+La release 1.1.0 conserva i dati su un solo dispositivo e non include sincronizzazione o backup completo. La cancellazione dei dati del sito, il ripristino del telefono o alcune politiche di storage del sistema possono rendere i file irrecuperabili.
 
 Per media aziendali non sostituibili e necessario definire una procedura di backup verificata prima della distribuzione estesa. Una futura integrazione puo aggiungere esportazione cifrata o sincronizzazione opzionale senza modificare il modello offline-first.
 

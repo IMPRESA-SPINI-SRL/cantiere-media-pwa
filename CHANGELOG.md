@@ -3,6 +3,28 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
+## [1.1.0] - 2026-07-21
+
+### Aggiunto
+
+- Nuova schermata iniziale dedicata al caricamento, mostrata subito dopo l'accesso.
+- Selettore del cantiere in primo piano nella schermata di caricamento.
+- Tre comandi diretti e sempre visibili: `Scatta foto`, `Registra video` e `Scegli dalla galleria`.
+- Raggruppamento della galleria per data con intestazioni `Oggi`, `Ieri` e data estesa.
+- Indicazione del numero di elementi per ogni data.
+- Zoom della griglia con due dita, da 2 a 6 colonne, in stile galleria Samsung.
+- Memorizzazione locale della densita scelta per la griglia.
+- Indicatore temporaneo del numero di colonne durante il gesto di zoom.
+- Test automatici per schermata upload-first, raggruppamento per data, pinch zoom e virtualizzazione delle righe.
+
+### Modificato
+
+- L'Archivio non e piu la prima schermata operativa: si apre solo su richiesta dell'utente.
+- Rimosso il piccolo pulsante flottante di caricamento.
+- Il caricamento diretto apre la finestra di avanzamento solo dopo la scelta o lo scatto dei file.
+- Dopo un upload eseguito dalla schermata principale l'Archivio nascosto non viene interrogato, preservando velocita e priorita del flusso di caricamento.
+- La virtualizzazione della galleria ora gestisce sia le righe delle miniature sia le intestazioni delle date.
+
 ## [1.0.4] - 2026-07-20
 
 ### Corretto
@@ -64,7 +86,7 @@ Il progetto usa Semantic Versioning.
 - Rivalutazione transazionale dei permessi prima della cancellazione e lavorazione a batch delle selezioni estese.
 - Validazione atomica di cantiere e autore durante il salvataggio per impedire upload orfani in presenza di schede concorrenti.
 - Preferiti e miniature protetti da transazioni che impediscono record orfani durante cancellazioni concorrenti.
-- Manifest, Service Worker, cache applicativa, aggiornamenti non interruttivi, icone e installazione PWA.
+- Manifest, Service Worker, cache applicativa, aggiornamenti, icone e installazione PWA.
 - Controllo quota storage e richiesta di persistenza quando supportata.
 - Test unitari per autenticazione, permessi, query planner, EXIF e windowing della galleria.
 - Documentazione di architettura e modello di sicurezza.

@@ -90,6 +90,40 @@ if (!indexSource.includes('<option value="photo">Solo foto</option>')) {
   throw new Error('Il filtro media deve mantenere Solo foto come prima opzione.');
 }
 
+for (const requiredUploadId of [
+  'upload-home',
+  'upload-site-select',
+  'home-photo-action',
+  'home-video-action',
+  'home-gallery-action',
+  'open-archive-button',
+]) {
+  if (!indexSource.includes(`id="${requiredUploadId}"`)) {
+    throw new Error(`Elemento upload-first mancante: ${requiredUploadId}.`);
+  }
+}
+if (indexSource.includes('id="upload-fab"')) {
+  throw new Error('Il vecchio pulsante flottante di upload non deve essere presente.');
+}
+if (!appSource.includes('let currentView = VIEW_MODES.UPLOAD')) {
+  throw new Error('La prima vista operativa deve essere il caricamento.');
+}
+if (!indexSource.includes('id="gallery-gesture-hint"')
+  || !indexSource.includes('id="gallery-zoom-indicator"')) {
+  throw new Error('La galleria deve esporre guida e indicatore del pinch zoom.');
+}
+const gallerySource = await readFile(resolve(root, 'js/gallery.js'), 'utf8');
+for (const requiredGalleryFeature of [
+  'buildGalleryLayoutRows',
+  'formatGalleryDateLabel',
+  'calculatePinchColumns',
+  'computeVirtualRowRange',
+]) {
+  if (!gallerySource.includes(requiredGalleryFeature)) {
+    throw new Error(`Funzione galleria mancante: ${requiredGalleryFeature}.`);
+  }
+}
+
 if (!indexSource.includes('id="viewer-video-center-toggle"')
   || !indexSource.includes('id="viewer-video-controls"')
   || !indexSource.includes('id="viewer-video-control-button"')) {

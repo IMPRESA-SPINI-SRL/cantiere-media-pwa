@@ -1,21 +1,10 @@
 # Cantiere Media PWA
 
-Versione 1.0.4.
+Versione 1.1.0.
 
-Su Android, quando sono selezionati insieme foto e video, l'app li propone in due invii separati. Questa scelta evita il limite di WhatsApp che puo rifiutare allegati misti e mostrare il messaggio "Non puoi inviare un messaggio vuoto".
+PWA mobile-first per acquisire, importare e consultare foto e video dei cantieri senza un backend obbligatorio. La priorita operativa e il caricamento: dopo il login l'utente trova immediatamente il cantiere e i tre comandi `Scatta foto`, `Registra video` e `Scegli dalla galleria`.
 
-PWA mobile-first per gestire foto e video dei cantieri senza un backend obbligatorio. Dopo il primo caricamento l'application shell, il login e tutti i media locali funzionano offline. Il progetto usa HTML, CSS e JavaScript Vanilla, senza dipendenze runtime esterne.
-
-
-## Ripristino sicuro della cache
-
-Quando un browser continua a mostrare una versione precedente dell'interfaccia, avviare il server della release corrente e aprire:
-
-```text
-http://127.0.0.1:8080/repair.html
-```
-
-La pagina rimuove soltanto il Service Worker e le cache `cantiere-media-shell-*`. Non elimina IndexedDB, utenti, cantieri, foto, video o preferiti.
+Il progetto usa HTML, CSS e JavaScript Vanilla. Dopo il primo caricamento dell'application shell, login, dati e media locali funzionano offline.
 
 ## Avvio locale
 
@@ -33,46 +22,71 @@ Per usare una porta diversa:
 PORT=9000 npm start
 ```
 
-Non aprire direttamente `index.html` con `file://`: moduli ES, Service Worker, Web Crypto e funzioni PWA richiedono un'origine web. In produzione pubblicare l'intera cartella su un hosting statico HTTPS; non e necessario un server applicativo o un database remoto.
+Non aprire direttamente `index.html` con `file://`: moduli ES, Service Worker, Web Crypto e funzioni PWA richiedono un'origine web. In produzione pubblicare l'intera cartella su un hosting statico HTTPS.
 
 ## Primo utilizzo
 
 1. Creare il primo amministratore e scegliere un PIN da 4 a 8 cifre.
 2. Aprire il menu Amministrazione e creare almeno un cantiere.
-3. Selezionare il cantiere nella schermata principale.
-4. Usare il pulsante flottante per acquisire o importare foto e video.
-5. Tenere premuta una miniatura per iniziare la selezione multipla.
+3. Nella schermata `Carica`, selezionare il cantiere.
+4. Toccare direttamente `Scatta foto`, `Registra video` oppure `Scegli dalla galleria`.
+5. Aprire `Archivio` soltanto quando serve consultare il materiale.
 
-L'app non legge foto o video all'avvio. Una query parte soltanto dopo la scelta del cantiere.
+La schermata iniziale non legge foto, video o miniature. Una query dell'Archivio parte soltanto quando l'utente lo apre e ha selezionato un cantiere.
+
+## Galleria
+
+L'Archivio:
+
+- raggruppa i media per data con intestazioni `Oggi`, `Ieri` e data estesa;
+- mostra il numero di elementi per ciascun giorno;
+- ordina dal piu recente;
+- permette di allargare o restringere la griglia con due dita;
+- supporta da 2 a 6 colonne e conserva la densita scelta sul dispositivo;
+- usa paginazione IndexedDB, miniature lazy e virtualizzazione di righe e intestazioni;
+- avvia la selezione multipla con pressione prolungata.
+
+Il gesto sulla griglia modifica la dimensione delle miniature. Il pinch dentro il visualizzatore continua invece a ingrandire la singola fotografia.
 
 ## Funzioni incluse
 
 - login PIN multiutente con ruoli Amministratore e Utente;
-- configurazione atomica del primo amministratore e blocco temporaneo dopo tentativi PIN errati;
+- schermata iniziale upload-first con tre azioni dirette;
 - cantieri attivi o conclusi, con doppia conferma di eliminazione;
 - upload foto, video e selezione multipla dalla galleria;
 - data foto da EXIF JPEG, poi data file, poi data upload;
 - limite video di 60 secondi e 100 MB;
 - filtri indicizzati per cantiere, tipo, autore e data;
-- galleria con paginazione, miniature lazy e windowing del DOM;
-- viewer fullscreen con swipe, pinch zoom, doppio tap, trascinamento e controlli video sempre visibili (Play/Pausa, avanzamento e tempi);
+- galleria per data con pinch zoom della griglia;
+- viewer fullscreen con swipe, pinch zoom, doppio tap, trascinamento e controlli video applicativi;
 - preferiti personali separati tra Archivio e Upload;
 - condivisione Web Share singola e multipla;
+- separazione in due invii quando Android/WhatsApp non accetta foto e video insieme;
 - eliminazione dei propri upload entro 24 ore per utenti normali;
-- validazione transazionale di upload, preferiti ed eliminazioni per evitare record orfani tra schede concorrenti;
+- validazione transazionale di upload, preferiti ed eliminazioni;
 - funzionamento offline e installazione PWA.
 
 ## Architettura dati
 
 - `users`: utenti, ruolo, stato e credenziali PIN derivate.
 - `sites`: cantieri e stato.
-- `media`: soli metadati indicizzati, mai i blob.
+- `media`: soli metadati indicizzati.
 - `mediaBlobs`: file originali.
 - `thumbnails`: miniature generate su richiesta.
 - `favorites`: preferiti personali indicizzati per contesto.
 - `settings`: impostazioni tecniche e controllo tentativi PIN.
 
-Le query della galleria usano indici composti e cursori discendenti. Non viene eseguito un caricamento completo dei media per poi filtrarli. I dettagli sono in `ARCHITECTURE.md`; il modello di sicurezza e descritto in `SECURITY.md`.
+Le query dell'Archivio usano indici composti e cursori discendenti. Non viene eseguito un caricamento completo dei media per poi filtrarli.
+
+## Ripristino sicuro della cache
+
+Quando un browser continua a mostrare una versione precedente, avviare la release corrente e aprire:
+
+```text
+http://127.0.0.1:8080/repair.html
+```
+
+La pagina rimuove soltanto Service Worker e cache `cantiere-media-shell-*`. Non elimina IndexedDB, utenti, cantieri, foto, video o preferiti.
 
 ## Controlli di qualita
 
@@ -93,25 +107,17 @@ Per indicare un eseguibile differente:
 CHROMIUM_PATH=/percorso/chromium npm run smoke
 ```
 
-Prima della distribuzione eseguire anche prove reali su Android e iPhone per fotocamera, selettore file, condivisione, installazione e limiti di quota.
-
-Il controllo statico verifica inoltre che l'interfaccia non possa richiamare direttamente la cancellazione a cascata, che nessun modulo applicativo manchi dalla cache offline e che non venga introdotta una scansione completa dello store `media`.
-
-I risultati della verifica della release e la checklist per il collaudo su dispositivi reali sono in `VERIFICATION.md`.
+Prima della distribuzione eseguire prove reali su Android e iPhone per fotocamera, selettore file, pinch della griglia, condivisione, installazione e quota storage.
 
 ## Aggiornamenti
 
-Il Service Worker controlla gli aggiornamenti all'avvio e quando l'app torna visibile. Dalla versione 1.0.4 il file del Service Worker viene richiesto senza cache HTTP; quando una nuova shell e pronta viene attivata automaticamente, le cache obsolete vengono rimosse e l'app viene ricaricata una sola volta. Avviare gli aggiornamenti quando non sono in corso upload o cancellazioni.
+Il Service Worker controlla gli aggiornamenti all'avvio e quando l'app torna visibile. Il file viene richiesto senza cache HTTP, la nuova shell viene attivata e le cache obsolete vengono rimosse. Eseguire gli aggiornamenti quando non sono in corso upload o cancellazioni.
 
-## Vincoli operativi importanti
+## Vincoli operativi
 
-L'architettura e preparata per cataloghi molto grandi e mantiene soltanto una finestra limitata di card nel DOM. La quantita effettiva di originali memorizzabili dipende comunque dalla quota concessa dal browser, dallo spazio libero e dalle politiche del sistema operativo. Il menu mostra uso e quota stimati e l'app richiede storage persistente quando disponibile.
+Foto, video, utenti e cantieri sono locali al singolo browser/dispositivo. Questa release non include sincronizzazione tra telefoni ne backup centralizzato. La quantita effettiva di originali memorizzabili dipende dalla quota concessa dal browser, dallo spazio libero e dalle politiche del sistema operativo.
 
-Il parser EXIF integrato legge `DateTimeOriginal` dai JPEG. Per formati come HEIC/HEIF, quando i metadati non sono leggibili dal browser, viene usata la data del file.
-
-La release 1.0.4 non sincronizza dispositivi diversi e non include ancora un backup completo. Prima di usare l'app come unica copia di dati aziendali non sostituibili, definire e collaudare una procedura di backup o aggiungere una sincronizzazione opzionale.
-
-Il PIN e un controllo di accesso locale, non una cifratura dei media. Proteggere il dispositivo con blocco schermo e cifratura di sistema.
+Il parser EXIF interno legge JPEG. HEIC/HEIF e alcune varianti di metadati devono essere collaudate sui dispositivi scelti dall'impresa.
 
 ## Versionamento
 

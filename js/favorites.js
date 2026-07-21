@@ -1,9 +1,9 @@
-import { FAVORITE_CONTEXTS, VIEW_MODES } from './config.js?v=1.0.4';
+import { FAVORITE_CONTEXTS, VIEW_MODES } from './config.js?v=1.1.0';
 import {
   getFavorite,
   queryFavoritePage,
   toggleFavoriteAtomic,
-} from './db.js?v=1.0.4';
+} from './db.js?v=1.1.0';
 
 export function favoriteContextForView(viewMode) {
   return [VIEW_MODES.MY_UPLOADS, VIEW_MODES.FAVORITE_UPLOADS].includes(viewMode)

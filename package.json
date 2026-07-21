@@ -1,6 +1,6 @@
 {
   "name": "cantiere-media-pwa",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "PWA offline per la gestione di foto e video dei cantieri.",

@@ -2,7 +2,7 @@ import {
   MEDIA_FILTERS,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.0.4';
+} from './config.js?v=1.1.0';
 
 export function isFavoriteView(viewMode) {
   return [VIEW_MODES.FAVORITE_ARCHIVE, VIEW_MODES.FAVORITE_UPLOADS].includes(viewMode);
@@ -14,12 +14,13 @@ export function isUploadView(viewMode) {
 
 export function viewModeLabel(viewMode) {
   const labels = {
+    [VIEW_MODES.UPLOAD]: 'Carica',
     [VIEW_MODES.ARCHIVE]: 'Archivio',
     [VIEW_MODES.MY_UPLOADS]: 'I miei upload',
     [VIEW_MODES.FAVORITE_ARCHIVE]: 'Preferiti archivio',
     [VIEW_MODES.FAVORITE_UPLOADS]: 'Preferiti upload',
   };
-  return labels[viewMode] ?? labels[VIEW_MODES.ARCHIVE];
+  return labels[viewMode] ?? labels[VIEW_MODES.UPLOAD];
 }
 
 export class FilterController {
@@ -84,8 +85,15 @@ export class FilterController {
     };
   }
 
+  setSite(siteId, { notify = true } = {}) {
+    const value = siteId && [...this.siteSelect.options].some((option) => option.value === siteId)
+      ? siteId
+      : '';
+    this.siteSelect.value = value;
+    if (notify) this.onChange?.(this.getValue());
+  }
+
   clearSite() {
-    this.siteSelect.value = '';
-    this.onChange?.(this.getValue());
+    this.setSite('');
   }
 }

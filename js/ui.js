@@ -1,4 +1,4 @@
-import { escapeHtml } from './utils.js?v=1.0.4';
+import { escapeHtml } from './utils.js?v=1.1.0';
 
 export function byId(id) {
   const element = document.getElementById(id);

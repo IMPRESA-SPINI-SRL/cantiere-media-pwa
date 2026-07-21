@@ -4,27 +4,27 @@ import {
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.0.4';
+} from './config.js?v=1.1.0';
 import {
   bootstrapAdministrator,
   login,
   logout,
   updateCurrentUserSnapshot,
-} from './auth.js?v=1.0.4';
+} from './auth.js?v=1.1.0';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.0.4';
-import { FilterController, isFavoriteView, viewModeLabel } from './filters.js?v=1.0.4';
-import { GalleryController } from './gallery.js?v=1.0.4';
+} from './db.js?v=1.1.0';
+import { FilterController, isFavoriteView, viewModeLabel } from './filters.js?v=1.1.0';
+import { GalleryController } from './gallery.js?v=1.1.0';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
   partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.0.4';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.0.4';
+} from './media.js?v=1.1.0';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.1.0';
 import {
   createSite,
   deleteSiteInBatches,
@@ -32,13 +32,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.0.4';
-import { UploadController } from './upload.js?v=1.0.4';
+} from './sites.js?v=1.1.0';
+import { UploadController } from './upload.js?v=1.1.0';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.0.4';
+} from './users.js?v=1.1.0';
 import {
   byId,
   closeDialog,
@@ -47,14 +47,14 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.0.4';
-import { debounce, formatBytes } from './utils.js?v=1.0.4';
-import { ViewerController } from './viewer.js?v=1.0.4';
+} from './ui.js?v=1.1.0';
+import { debounce, formatBytes } from './utils.js?v=1.1.0';
+import { ViewerController } from './viewer.js?v=1.1.0';
 
 let currentUser = null;
 let sitesCache = [];
 let usersCache = [];
-let currentView = VIEW_MODES.ARCHIVE;
+let currentView = VIEW_MODES.UPLOAD;
 let deferredInstallPrompt = null;
 let filterController;
 let galleryController;
@@ -63,7 +63,7 @@ let viewerController;
 let userEditorOriginal = null;
 
 const reloadGallery = debounce((filters) => {
-  if (currentUser) galleryController.reload(filters);
+  if (currentUser && currentView !== VIEW_MODES.UPLOAD) galleryController.reload(filters);
 }, 100);
 
 function showAuthError(message = '') {
@@ -81,19 +81,73 @@ function activeSite() {
   return sitesCache.find((site) => site.id === siteId) ?? null;
 }
 
+function populateUploadSiteSelect(selectedId = filterController?.getValue().siteId) {
+  const select = byId('upload-site-select');
+  select.replaceChildren(new Option('Seleziona un cantiere...', ''));
+  for (const site of sitesCache) {
+    const suffix = site.status === SITE_STATUSES.COMPLETED ? ' (concluso)' : '';
+    select.add(new Option(`${site.name}${suffix}`, site.id));
+  }
+  select.value = sitesCache.some((site) => site.id === selectedId) ? selectedId : '';
+  byId('upload-site-select').closest('.upload-site-field')?.classList.remove('is-missing');
+}
+
+function synchronizeUploadSite(siteId) {
+  const select = byId('upload-site-select');
+  if (select.value !== (siteId ?? '')) select.value = siteId ?? '';
+}
+
+function handleFilterChange(filters) {
+  synchronizeUploadSite(filters.siteId);
+  reloadGallery(filters);
+}
+
+function updateUploadHomeFeedback(saved = []) {
+  const feedback = byId('upload-home-feedback');
+  if (!saved.length) {
+    feedback.classList.remove('is-success');
+    feedback.querySelector('strong').textContent = activeSite()
+      ? `Destinazione: ${activeSite().name}`
+      : 'Pronto per il caricamento';
+    feedback.querySelector('span').textContent = activeSite()
+      ? 'Scegli una delle tre modalità qui sopra.'
+      : 'Seleziona prima il cantiere di destinazione.';
+    return;
+  }
+  feedback.classList.add('is-success');
+  feedback.querySelector('strong').textContent = saved.length === 1
+    ? '1 elemento salvato'
+    : `${saved.length} elementi salvati`;
+  feedback.querySelector('span').textContent = `Cantiere: ${activeSite()?.name ?? 'selezionato'}. Disponibili anche offline.`;
+}
+
+function startHomeUpload(methodName) {
+  if (!activeSite()) {
+    const field = byId('upload-site-select').closest('.upload-site-field');
+    field?.classList.add('is-missing');
+    byId('upload-site-select').focus();
+    showToast('Seleziona prima il cantiere di destinazione.', { type: 'warning' });
+    return;
+  }
+  byId('upload-site-select').closest('.upload-site-field')?.classList.remove('is-missing');
+  uploadController[methodName]();
+}
+
 function initializeControllers() {
   filterController = new FilterController({
     siteSelect: byId('site-filter'),
     mediaSelect: byId('media-filter'),
     authorSelect: byId('author-filter'),
     dateInput: byId('date-filter'),
-    onChange: reloadGallery,
+    onChange: handleFilterChange,
   });
 
   galleryController = new GalleryController({
     container: byId('gallery'),
     status: byId('gallery-status'),
     sentinel: byId('gallery-sentinel'),
+    gestureHint: byId('gallery-gesture-hint'),
+    zoomIndicator: byId('gallery-zoom-indicator'),
     getUser: () => currentUser,
     onOpen: (index) => viewerController.open(index),
     onSelectionChange: updateSelectionToolbar,
@@ -137,8 +191,18 @@ function initializeControllers() {
     progress: byId('upload-progress'),
     progressText: byId('upload-progress-text'),
     closeButton: byId('upload-close'),
+    directButtons: [
+      byId('home-photo-action'),
+      byId('home-video-action'),
+      byId('home-gallery-action'),
+    ],
     getContext: () => ({ site: activeSite(), user: currentUser }),
-    onUploaded: async () => galleryController.reload(filterController.getValue()),
+    onUploaded: async (saved) => {
+      updateUploadHomeFeedback(saved);
+      if (currentView !== VIEW_MODES.UPLOAD) {
+        await galleryController.reload(filterController.getValue());
+      }
+    },
   });
 }
 
@@ -151,7 +215,6 @@ function bindStaticEvents() {
     event.preventDefault();
     closeDialog(byId('menu-dialog'));
   });
-  byId('upload-fab').addEventListener('click', () => uploadController.open());
   byId('selection-close').addEventListener('click', () => galleryController.clearSelection());
   byId('selection-share').addEventListener('click', shareSelection);
   byId('selection-delete').addEventListener('click', deleteSelection);
@@ -159,6 +222,16 @@ function bindStaticEvents() {
   byId('manage-sites-button').addEventListener('click', openSitesManagement);
   byId('manage-users-button').addEventListener('click', openUsersManagement);
   byId('install-app-button').addEventListener('click', installApplication);
+  byId('home-photo-action').addEventListener('click', () => startHomeUpload('startPhotoCapture'));
+  byId('home-video-action').addEventListener('click', () => startHomeUpload('startVideoCapture'));
+  byId('home-gallery-action').addEventListener('click', () => startHomeUpload('startGalleryImport'));
+  byId('open-archive-button').addEventListener('click', () => setView(VIEW_MODES.ARCHIVE));
+  byId('upload-site-select').addEventListener('change', () => {
+    const siteId = byId('upload-site-select').value;
+    filterController.setSite(siteId, { notify: false });
+    byId('upload-site-select').closest('.upload-site-field')?.classList.remove('is-missing');
+    updateUploadHomeFeedback();
+  });
 
   for (const button of document.querySelectorAll('[data-view]')) {
     button.addEventListener('click', () => setView(button.dataset.view));
@@ -290,7 +363,7 @@ async function enterApplication(user) {
   byId('app-screen').hidden = false;
   updateCurrentUserUi();
   await refreshMetadata();
-  setView(VIEW_MODES.ARCHIVE, { closeMenu: false });
+  setView(VIEW_MODES.UPLOAD, { closeMenu: false });
   updateMenuStorage();
   resumeInterruptedDeletions();
 }
@@ -312,16 +385,27 @@ async function refreshMetadata() {
   ]);
   filterController.setUsers(usersCache);
   filterController.setSites(sitesCache, selectedSiteId);
+  populateUploadSiteSelect(filterController.getValue().siteId);
+  updateUploadHomeFeedback();
 }
 
 function setView(viewMode, { closeMenu = true } = {}) {
   if (!Object.values(VIEW_MODES).includes(viewMode)) return;
   currentView = viewMode;
+  const isUploadHome = viewMode === VIEW_MODES.UPLOAD;
   byId('view-title').textContent = viewModeLabel(viewMode);
+  byId('upload-home').hidden = !isUploadHome;
+  byId('archive-view').hidden = isUploadHome;
   for (const button of document.querySelectorAll('[data-view]')) {
     button.classList.toggle('is-active', button.dataset.view === viewMode);
   }
-  filterController.setViewMode(viewMode, currentUser);
+  if (isUploadHome) {
+    galleryController.clearSelection();
+    updateUploadHomeFeedback();
+  } else {
+    filterController.setViewMode(viewMode, currentUser);
+  }
+  window.scrollTo({ top: 0, behavior: 'auto' });
   if (closeMenu) closeDialog(byId('menu-dialog'));
 }
 
@@ -487,6 +571,8 @@ async function handleLogout() {
   currentUser = null;
   sitesCache = [];
   usersCache = [];
+  byId('upload-site-select').value = '';
+  updateUploadHomeFeedback();
   await showLoginScreen();
 }
 

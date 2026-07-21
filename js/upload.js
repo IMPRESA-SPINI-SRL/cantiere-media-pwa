@@ -1,6 +1,6 @@
-import { getStorageEstimate, requestPersistentStorage, saveMediaFile } from './media.js?v=1.0.4';
-import { formatBytes } from './utils.js?v=1.0.4';
-import { closeDialog, openDialog, showToast } from './ui.js?v=1.0.4';
+import { getStorageEstimate, requestPersistentStorage, saveMediaFile } from './media.js?v=1.1.0';
+import { formatBytes } from './utils.js?v=1.1.0';
+import { closeDialog, openDialog, showToast } from './ui.js?v=1.1.0';
 
 export class UploadController {
   constructor({
@@ -15,6 +15,7 @@ export class UploadController {
     progress,
     progressText,
     closeButton,
+    directButtons = [],
     getContext,
     onUploaded,
   }) {
@@ -30,6 +31,7 @@ export class UploadController {
       progress,
       progressText,
       closeButton,
+      directButtons,
       getContext,
       onUploaded,
     });
@@ -38,9 +40,9 @@ export class UploadController {
   }
 
   bindEvents() {
-    this.photoButton.addEventListener('click', () => this.photoInput.click());
-    this.videoButton.addEventListener('click', () => this.videoInput.click());
-    this.galleryButton.addEventListener('click', () => this.galleryInput.click());
+    this.photoButton.addEventListener('click', () => this.startPhotoCapture());
+    this.videoButton.addEventListener('click', () => this.startVideoCapture());
+    this.galleryButton.addEventListener('click', () => this.startGalleryImport());
     this.closeButton.addEventListener('click', () => {
       if (!this.processing) closeDialog(this.dialog);
     });
@@ -58,13 +60,41 @@ export class UploadController {
   }
 
   open() {
-    const { site } = this.getContext();
-    if (!site) {
-      showToast('Seleziona prima un cantiere.', { type: 'warning' });
-      return;
-    }
+    if (!this.validateContext()) return;
     this.resetProgress();
     openDialog(this.dialog);
+  }
+
+  validateContext() {
+    const { site, user } = this.getContext();
+    if (!site) {
+      showToast('Seleziona prima il cantiere di destinazione.', { type: 'warning' });
+      return false;
+    }
+    if (!user) {
+      showToast('Utente non valido.', { type: 'error' });
+      return false;
+    }
+    return true;
+  }
+
+  startInput(input) {
+    if (this.processing || !this.validateContext()) return false;
+    this.resetProgress();
+    input.click();
+    return true;
+  }
+
+  startPhotoCapture() {
+    return this.startInput(this.photoInput);
+  }
+
+  startVideoCapture() {
+    return this.startInput(this.videoInput);
+  }
+
+  startGalleryImport() {
+    return this.startInput(this.galleryInput);
   }
 
   resetProgress() {
@@ -76,7 +106,13 @@ export class UploadController {
 
   setProcessing(value) {
     this.processing = value;
-    for (const button of [this.photoButton, this.videoButton, this.galleryButton, this.closeButton]) {
+    for (const button of [
+      this.photoButton,
+      this.videoButton,
+      this.galleryButton,
+      this.closeButton,
+      ...this.directButtons,
+    ]) {
       button.disabled = value;
     }
     this.progressWrap.hidden = !value;
@@ -101,6 +137,7 @@ export class UploadController {
       return;
     }
 
+    if (!this.dialog.open) openDialog(this.dialog);
     this.setProcessing(true);
     this.progress.max = files.length;
     this.progress.value = 0;

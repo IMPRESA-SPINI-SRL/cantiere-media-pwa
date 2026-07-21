@@ -11,10 +11,10 @@
   <meta name="format-detection" content="telephone=no">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>Cantiere Media</title>
-  <link rel="manifest" href="./manifest.json?v=1.0.4">
+  <link rel="manifest" href="./manifest.json?v=1.1.0">
   <link rel="apple-touch-icon" href="./icons/icon-180.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./css/style.css?v=1.0.4">
+  <link rel="stylesheet" href="./css/style.css?v=1.1.0">
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
@@ -104,45 +104,85 @@
     </div>
 
     <main class="app-main">
-      <form id="filter-form" class="filter-panel" autocomplete="off">
-        <label class="field field-site">
-          <span>Cantiere</span>
-          <select id="site-filter" required>
-            <option value="">Seleziona un cantiere...</option>
-          </select>
-        </label>
-        <div class="filter-row">
-          <label class="field">
-            <span>Foto / Video</span>
-            <select id="media-filter">
-              <option value="photo">Solo foto</option>
-              <option value="video">Solo video</option>
-              <option value="both">Foto e video</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Autore</span>
-            <select id="author-filter">
-              <option value="all">Tutti</option>
+      <section id="upload-home" class="upload-home" aria-labelledby="upload-home-title">
+        <div class="upload-home-hero">
+          <span class="upload-home-kicker">Operazione principale</span>
+          <h2 id="upload-home-title">Carica foto e video</h2>
+          <p>Seleziona il cantiere e scegli subito come acquisire il materiale.</p>
+          <label class="field upload-site-field">
+            <span>Cantiere di destinazione</span>
+            <select id="upload-site-select" required>
+              <option value="">Seleziona un cantiere...</option>
             </select>
           </label>
         </div>
-        <label class="field field-date">
-          <span>Data</span>
-          <input id="date-filter" type="date">
-        </label>
-      </form>
 
-      <p id="gallery-status" class="gallery-status">Seleziona un cantiere per visualizzare foto e video.</p>
-      <div id="gallery" class="gallery" aria-live="polite"></div>
-      <div id="gallery-sentinel" class="gallery-sentinel" hidden aria-label="Caricamento altri media">
-        <span class="spinner"></span>
-      </div>
+        <div class="upload-home-actions" aria-label="Modalità di caricamento">
+          <button id="home-photo-action" class="upload-home-action upload-home-action-primary" type="button">
+            <span class="upload-home-icon"><svg><use href="#icon-camera"></use></svg></span>
+            <span><strong>Scatta foto</strong><small>Apri subito la fotocamera</small></span>
+          </button>
+          <button id="home-video-action" class="upload-home-action" type="button">
+            <span class="upload-home-icon"><svg><use href="#icon-video"></use></svg></span>
+            <span><strong>Registra video</strong><small>Registra un video di cantiere</small></span>
+          </button>
+          <button id="home-gallery-action" class="upload-home-action" type="button">
+            <span class="upload-home-icon"><svg><use href="#icon-gallery"></use></svg></span>
+            <span><strong>Scegli dalla galleria</strong><small>Importa una o più foto o video</small></span>
+          </button>
+        </div>
+
+        <div id="upload-home-feedback" class="upload-home-feedback" aria-live="polite">
+          <strong>Pronto per il caricamento</strong>
+          <span>Le foto e i video vengono salvati sul dispositivo e restano disponibili offline.</span>
+        </div>
+
+        <button id="open-archive-button" class="button button-text upload-home-archive" type="button">
+          Consulta l’archivio
+        </button>
+      </section>
+
+      <section id="archive-view" class="archive-view" hidden>
+        <form id="filter-form" class="filter-panel" autocomplete="off">
+          <label class="field field-site">
+            <span>Cantiere</span>
+            <select id="site-filter" required>
+              <option value="">Seleziona un cantiere...</option>
+            </select>
+          </label>
+          <div class="filter-row">
+            <label class="field">
+              <span>Foto / Video</span>
+              <select id="media-filter">
+                <option value="photo">Solo foto</option>
+                <option value="video">Solo video</option>
+                <option value="both">Foto e video</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Autore</span>
+              <select id="author-filter">
+                <option value="all">Tutti</option>
+              </select>
+            </label>
+          </div>
+          <label class="field field-date">
+            <span>Data</span>
+            <input id="date-filter" type="date">
+          </label>
+        </form>
+
+        <div id="gallery-gesture-hint" class="gallery-gesture-hint" hidden>
+          Usa due dita sulla galleria per ingrandire o ridurre le miniature.
+        </div>
+        <p id="gallery-status" class="gallery-status">Seleziona un cantiere per visualizzare foto e video.</p>
+        <div id="gallery" class="gallery" aria-live="polite"></div>
+        <div id="gallery-zoom-indicator" class="gallery-zoom-indicator" hidden aria-live="polite"></div>
+        <div id="gallery-sentinel" class="gallery-sentinel" hidden aria-label="Caricamento altri media">
+          <span class="spinner"></span>
+        </div>
+      </section>
     </main>
-
-    <button id="upload-fab" class="fab" type="button" aria-label="Carica foto o video">
-      <svg><use href="#icon-upload"></use></svg>
-    </button>
   </section>
 
   <dialog id="menu-dialog" class="menu-dialog">
@@ -156,6 +196,9 @@
       </button>
     </div>
     <nav class="menu-list" aria-label="Sezioni">
+      <button class="menu-item menu-item-icon" type="button" data-view="upload">
+        <svg><use href="#icon-upload"></use></svg><span>Carica foto e video</span>
+      </button>
       <button class="menu-item" type="button" data-view="archive">Archivio</button>
       <button class="menu-item" type="button" data-view="my-uploads">I miei upload</button>
       <button class="menu-item" type="button" data-view="favorite-archive">Preferiti archivio</button>
@@ -317,6 +360,6 @@
   </div>
   <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 
-  <script type="module" src="./js/bootstrap-1.0.4.js"></script>
+  <script type="module" src="./js/bootstrap-1.1.0.js"></script>
 </body>
 </html>

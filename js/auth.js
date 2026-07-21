@@ -1,4 +1,4 @@
-import { LIMITS, ROLES, STORE_NAMES } from './config.js?v=1.0.4';
+import { LIMITS, ROLES, STORE_NAMES } from './config.js?v=1.1.0';
 import {
   deleteSetting,
   getRecord,
@@ -6,13 +6,13 @@ import {
   putInitialUser,
   putRecord,
   setSetting,
-} from './db.js?v=1.0.4';
+} from './db.js?v=1.1.0';
 import {
   base64ToBytes,
   bytesToBase64,
   createId,
   normalizeText,
-} from './utils.js?v=1.0.4';
+} from './utils.js?v=1.1.0';
 
 let currentUser = null;
 
