@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const version = '1.4.1';
+const version = '1.4.2';
 const escapedVersion = version.replaceAll('.', '\\.');
 
 test('gli asset principali e i moduli runtime sono versionati', async () => {

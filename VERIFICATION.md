@@ -1,12 +1,12 @@
-# Verifica release 1.4.1
+# Verifica release 1.4.2
 
 Data: 2026-07-22.
 
 ## Controlli completati
 
-- `npm test`: 52 test superati su 52.
+- `npm test`: 54 test superati su 54.
 - `npm run check`: 35 file JavaScript validi.
-- versione `1.4.1` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
+- versione `1.4.2` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
 - logo Impresa Spini, palette coordinata e nuove icone PWA inclusi nell'application shell;
 - asset PWA e tre icone verificate nelle dimensioni dichiarate;
 - assenza delle sezioni `I miei upload`, `Preferiti archivio` e `Preferiti upload` verificata;
@@ -26,6 +26,8 @@ Data: 2026-07-22.
 - indici IndexedDB `siteContentHash` univoco per cantiere e `siteTypeSize` presenti;
 - duplicati classificati come ignorati e non salvati;
 - compatibilita con media storici senza hash verificata strutturalmente tramite ricerca mirata per tipo e dimensione;
+- selettore cantieri desktop centrato, con altezza vincolata al viewport e lista a scorrimento interno;
+- gestione esplicita di rotellina e trackpad verificata con test automatico sullo spostamento di `scrollTop`;
 
 
 I test coprono autenticazione PIN, EXIF JPEG, permessi, query planner IndexedDB, condivisione mista, controlli video, date della galleria, densita della griglia, virtualizzazione, priorita del caricamento, cantieri preferiti e trasformazioni del viewer.
@@ -46,11 +48,19 @@ npm run smoke
 CHROMIUM_PATH=/percorso/chromium npm run smoke
 ```
 
-## Collaudo specifico della release 1.4.1
+## Collaudo specifico della release 1.4.2
+
+Su PC:
+
+1. aprire il selettore cantieri sia nella schermata Carica sia nell'Archivio;
+2. verificare che la finestra sia centrata e completamente visibile anche quando il comando si trova nella parte bassa della pagina;
+3. posizionare il puntatore sull'elenco e usare la rotellina o il trackpad: devono scorrere i cantieri senza spostare la pagina sottostante;
+4. verificare che siano raggiungibili sia i primi sia gli ultimi cantieri;
+5. ridimensionare la finestra in altezza e riaprire il selettore: deve adattarsi allo spazio disponibile.
 
 Su Samsung/Android:
 
-1. aggiornare l'app e controllare `Versione 1.4.1` nel menu;
+1. aggiornare l'app e controllare `Versione 1.4.2` nel menu;
 2. verificare logo, sfondi neutri, azioni rosse e uso limitato del blu;
 3. aprire il selettore della schermata Carica e verificare l'ordine: preferiti alfabetici, attivi alfabetici, conclusi alfabetici;
 4. aprire l'Archivio e verificare che i preferiti del relativo selettore siano indipendenti da quelli del Caricamento;

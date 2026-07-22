@@ -160,6 +160,13 @@ if (!indexSource.includes('./images/logo-spini.png')) {
 if (!sitePickerSource.includes('Tutti i cantieri') || !sitePickerSource.includes('Cantieri attivi') || !sitePickerSource.includes('Cantieri conclusi')) {
   throw new Error('Il selettore deve mostrare tutti i cantieri e i gruppi ordinati richiesti.');
 }
+if (!sitePickerSource.includes("addEventListener('wheel'")
+  || !sitePickerSource.includes('event.preventDefault()')
+  || !styleSource.includes('scrollbar-gutter: stable')
+  || !styleSource.includes('height: min(76dvh, 680px)')
+  || !styleSource.includes('margin: auto')) {
+  throw new Error('Posizionamento desktop o scorrimento con rotellina del selettore cantieri mancante.');
+}
 for (const globalIndex of ['allDate', 'allTypeDate', 'allAuthorDate', 'allTypeAuthorDate']) {
   if (!databaseSource.includes(`'${globalIndex}'`)) {
     throw new Error(`Indice globale mancante per Tutti i cantieri: ${globalIndex}.`);

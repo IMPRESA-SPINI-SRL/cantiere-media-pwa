@@ -3,6 +3,15 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
+## [1.4.2] - 2026-07-22
+
+### Corretto
+
+- Su PC il selettore cantieri non si apre piu come pannello ancorato al bordo inferiore: viene centrato e resta interamente nello spazio visibile.
+- L'elenco usa un'altezza massima dedicata e una barra di scorrimento interna, evitando che le ultime righe restino fuori dallo schermo.
+- La rotellina del mouse e il trackpad scorrono direttamente l'elenco dei cantieri, senza muovere la pagina sottostante.
+- Su smartphone il selettore conserva il comportamento a pannello inferiore.
+
 ## [1.4.1] - 2026-07-22
 
 ### Corretto

@@ -1,6 +1,6 @@
 # Cantiere Media PWA
 
-Versione 1.4.1.
+Versione 1.4.2.
 
 PWA mobile-first per acquisire, importare e consultare foto e video dei cantieri senza un backend obbligatorio. La priorita operativa e il caricamento: dopo il login l'utente trova immediatamente il cantiere e i tre comandi `Scatta foto`, `Registra video` e `Scegli dalla galleria`.
 
@@ -75,6 +75,8 @@ Ogni utente puo toccare la stella accanto a un cantiere. I preferiti vengono mos
 
 Le sezioni media `I miei upload`, `Preferiti archivio` e `Preferiti upload` non fanno piu parte del menu.
 
+Su PC il selettore cantieri si apre centrato nello schermo, con altezza limitata e scorrimento interno tramite rotellina del mouse o trackpad. Su smartphone resta un pannello inferiore ottimizzato per il tocco.
+
 ## Funzioni incluse
 
 - login PIN multiutente con ruoli Amministratore e Utente;
@@ -101,7 +103,7 @@ Le sezioni media `I miei upload`, `Preferiti archivio` e `Preferiti upload` non 
 - `media`: soli metadati indicizzati.
 - `mediaBlobs`: file originali.
 - `thumbnails`: miniature generate su richiesta.
-- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.4.1.
+- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.4.2.
 - `settings`: impostazioni tecniche, controllo tentativi PIN e cantieri preferiti per utente e contesto.
 
 Le query dell'Archivio usano indici composti e cursori discendenti. Non viene eseguito un caricamento completo dei media per poi filtrarli.

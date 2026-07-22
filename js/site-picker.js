@@ -1,6 +1,6 @@
-import { ALL_SITES_ID, SITE_STATUSES } from './config.js?v=1.4.1';
-import { groupSitesForPicker } from './site-favorites.js?v=1.4.1';
-import { closeDialog, openDialog } from './ui.js?v=1.4.1';
+import { ALL_SITES_ID, SITE_STATUSES } from './config.js?v=1.4.2';
+import { groupSitesForPicker } from './site-favorites.js?v=1.4.2';
+import { closeDialog, openDialog } from './ui.js?v=1.4.2';
 
 function createStarIcon() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -18,6 +18,12 @@ function siteLabel(site) {
     : site.name;
 }
 
+export function wheelDeltaPixels(deltaY, deltaMode = 0, viewportHeight = 0) {
+  if (deltaMode === 1) return deltaY * 18;
+  if (deltaMode === 2) return deltaY * Math.max(1, viewportHeight);
+  return deltaY;
+}
+
 export class SitePickerController {
   constructor({ dialog, title, list, closeButton }) {
     Object.assign(this, { dialog, title, list, closeButton });
@@ -30,6 +36,7 @@ export class SitePickerController {
     this.onToggleFavorite = null;
 
     this.closeButton.addEventListener('click', () => closeDialog(this.dialog));
+    this.list.addEventListener('wheel', (event) => this.handleWheel(event), { passive: false });
     this.dialog.addEventListener('cancel', (event) => {
       event.preventDefault();
       closeDialog(this.dialog);
@@ -56,6 +63,19 @@ export class SitePickerController {
     this.onToggleFavorite = onToggleFavorite;
     this.render();
     openDialog(this.dialog);
+  }
+
+  handleWheel(event) {
+    const maxScrollTop = Math.max(0, this.list.scrollHeight - this.list.clientHeight);
+    if (maxScrollTop === 0 || event.deltaY === 0) return;
+
+    const delta = wheelDeltaPixels(event.deltaY, event.deltaMode, this.list.clientHeight);
+    const nextScrollTop = Math.min(maxScrollTop, Math.max(0, this.list.scrollTop + delta));
+    if (nextScrollTop === this.list.scrollTop) return;
+
+    this.list.scrollTop = nextScrollTop;
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   render() {
