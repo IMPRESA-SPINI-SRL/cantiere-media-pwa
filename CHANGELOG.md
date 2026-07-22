@@ -3,6 +3,13 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
+## [1.4.3] - 2026-07-22
+
+### Modificato
+
+- Le intestazioni `PREFERITI`, `CANTIERI ATTIVI` e `CANTIERI CONCLUSI` nei selettori cantieri sono ora evidenziate con testo rosso aziendale, fondo rosso molto chiaro, bordo laterale e separatore discreto.
+- Aumentati leggermente peso, dimensione e spaziatura delle intestazioni per distinguerle chiaramente dai nomi dei cantieri senza appesantire il menu.
+
 ## [1.4.2] - 2026-07-22
 
 ### Corretto

@@ -1,5 +1,5 @@
-import { getSetting, setSetting } from './db.js?v=1.4.2';
-import { SITE_STATUSES } from './config.js?v=1.4.2';
+import { getSetting, setSetting } from './db.js?v=1.4.3';
+import { SITE_STATUSES } from './config.js?v=1.4.3';
 
 export const SITE_FAVORITE_CONTEXTS = Object.freeze({
   ARCHIVE: 'archive',

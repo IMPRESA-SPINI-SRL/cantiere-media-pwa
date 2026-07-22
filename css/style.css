@@ -273,7 +273,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   touch-action: pan-y;
   padding-bottom: calc(8px + var(--safe-bottom));
 }
-.site-picker-group-title { margin: 14px 14px 7px; color: var(--text-muted); font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.site-picker-group-title {
+  margin: 14px 10px 7px;
+  padding: 7px 10px 7px 12px;
+  border-left: 4px solid var(--accent);
+  border-bottom: 1px solid rgba(201, 40, 50, 0.22);
+  border-radius: 7px;
+  background: linear-gradient(90deg, var(--accent-soft), rgba(251, 236, 238, 0.28));
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.065em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
 .site-picker-clear,
 .site-picker-site {
   width: 100%;

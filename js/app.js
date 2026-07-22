@@ -5,35 +5,35 @@ import {
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.4.2';
+} from './config.js?v=1.4.3';
 import {
   bootstrapAdministrator,
   login,
   logout,
   restoreSession,
   updateCurrentUserSnapshot,
-} from './auth.js?v=1.4.2';
+} from './auth.js?v=1.4.3';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.4.2';
-import { FilterController, viewModeLabel } from './filters.js?v=1.4.2';
-import { GalleryController } from './gallery.js?v=1.4.2';
+} from './db.js?v=1.4.3';
+import { FilterController, viewModeLabel } from './filters.js?v=1.4.3';
+import { GalleryController } from './gallery.js?v=1.4.3';
 import {
   getSiteFavoriteIds,
   SITE_FAVORITE_CONTEXTS,
   sortSitesByFavorites,
   toggleSiteFavorite,
-} from './site-favorites.js?v=1.4.2';
-import { SitePickerController } from './site-picker.js?v=1.4.2';
+} from './site-favorites.js?v=1.4.3';
+import { SitePickerController } from './site-picker.js?v=1.4.3';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
   partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.4.2';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.4.2';
+} from './media.js?v=1.4.3';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.4.3';
 import {
   createSite,
   deleteSiteInBatches,
@@ -41,13 +41,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.4.2';
-import { UploadController } from './upload.js?v=1.4.2';
+} from './sites.js?v=1.4.3';
+import { UploadController } from './upload.js?v=1.4.3';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.4.2';
+} from './users.js?v=1.4.3';
 import {
   byId,
   closeDialog,
@@ -56,9 +56,9 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.4.2';
-import { debounce, formatBytes } from './utils.js?v=1.4.2';
-import { ViewerController } from './viewer.js?v=1.4.2';
+} from './ui.js?v=1.4.3';
+import { debounce, formatBytes } from './utils.js?v=1.4.3';
+import { ViewerController } from './viewer.js?v=1.4.3';
 
 let currentUser = null;
 let sitesCache = [];
