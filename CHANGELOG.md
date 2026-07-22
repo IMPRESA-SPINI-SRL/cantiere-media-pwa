@@ -3,7 +3,16 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
-## [1.3.0] - 2026-07-22
+## [1.4.1] - 2026-07-22
+
+### Corretto
+
+- Il riconoscimento dei duplicati e ora limitato al cantiere selezionato.
+- Lo stesso file puo essere archiviato in cantieri diversi, ma non due volte nello stesso cantiere.
+- Sostituito l'indice globale univoco con l'indice composto univoco `siteContentHash`.
+- La ricerca dei media storici senza impronta usa l'indice mirato `siteTypeSize`, evitando confronti con altri cantieri.
+
+## [1.4.0] - 2026-07-22
 
 ### Aggiunto
 

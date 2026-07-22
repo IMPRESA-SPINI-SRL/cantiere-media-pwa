@@ -5,34 +5,35 @@ import {
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.3.0';
+} from './config.js?v=1.4.1';
 import {
   bootstrapAdministrator,
   login,
   logout,
+  restoreSession,
   updateCurrentUserSnapshot,
-} from './auth.js?v=1.3.0';
+} from './auth.js?v=1.4.1';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.3.0';
-import { FilterController, viewModeLabel } from './filters.js?v=1.3.0';
-import { GalleryController } from './gallery.js?v=1.3.0';
+} from './db.js?v=1.4.1';
+import { FilterController, viewModeLabel } from './filters.js?v=1.4.1';
+import { GalleryController } from './gallery.js?v=1.4.1';
 import {
   getSiteFavoriteIds,
   SITE_FAVORITE_CONTEXTS,
   sortSitesByFavorites,
   toggleSiteFavorite,
-} from './site-favorites.js?v=1.3.0';
-import { SitePickerController } from './site-picker.js?v=1.3.0';
+} from './site-favorites.js?v=1.4.1';
+import { SitePickerController } from './site-picker.js?v=1.4.1';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
   partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.3.0';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.3.0';
+} from './media.js?v=1.4.1';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.4.1';
 import {
   createSite,
   deleteSiteInBatches,
@@ -40,13 +41,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.3.0';
-import { UploadController } from './upload.js?v=1.3.0';
+} from './sites.js?v=1.4.1';
+import { UploadController } from './upload.js?v=1.4.1';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.3.0';
+} from './users.js?v=1.4.1';
 import {
   byId,
   closeDialog,
@@ -55,9 +56,9 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.3.0';
-import { debounce, formatBytes } from './utils.js?v=1.3.0';
-import { ViewerController } from './viewer.js?v=1.3.0';
+} from './ui.js?v=1.4.1';
+import { debounce, formatBytes } from './utils.js?v=1.4.1';
+import { ViewerController } from './viewer.js?v=1.4.1';
 
 let currentUser = null;
 let sitesCache = [];
@@ -357,8 +358,13 @@ async function start() {
   try {
     await openDatabase();
     const users = await listUsers();
-    if (!users.length) showSetupScreen();
-    else await showLoginScreen(users);
+    if (!users.length) {
+      showSetupScreen();
+    } else {
+      const sessionUser = await restoreSession();
+      if (sessionUser) await enterApplication(sessionUser);
+      else await showLoginScreen(users);
+    }
   } catch (error) {
     showAuthError(error?.message ?? 'Impossibile avviare l\'applicazione.');
   }
@@ -653,7 +659,12 @@ async function handleLogout() {
   if (byId('viewer-dialog').open) viewerController.close();
   galleryController.clearSelection();
   filterController.clearSite();
-  logout();
+  try {
+    await logout();
+  } catch (error) {
+    showToast(error?.message ?? 'Uscita non riuscita.', { type: 'error' });
+    return;
+  }
   currentUser = null;
   sitesCache = [];
   usersCache = [];

@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const version = '1.3.0';
+const version = '1.4.1';
 const escapedVersion = version.replaceAll('.', '\\.');
 
 test('gli asset principali e i moduli runtime sono versionati', async () => {
@@ -37,10 +37,11 @@ test('il bootstrap rileva una cache o un Service Worker di versione precedente',
 test('il Service Worker forza asset freschi per la nuova release', async () => {
   const source = await readFile(resolve(root, 'service-worker.js'), 'utf8');
   assert.match(source, /new Request\(url, \{ cache: 'reload' \}\)/);
-  assert.match(source, /\.\/js\/bootstrap-1\.3\.0\.js/);
-  assert.match(source, /\.\/js\/viewer\.js\?v=1\.3\.0/);
-  assert.match(source, /\.\/js\/site-favorites\.js\?v=1\.3\.0/);
-  assert.match(source, /\.\/js\/site-picker\.js\?v=1\.3\.0/);
+  assert.match(source, new RegExp(`\\.\\/js\\/bootstrap-${escapedVersion}\\.js`));
+  assert.match(source, new RegExp(`\\.\\/js\\/viewer\\.js\\?v=${escapedVersion}`));
+  assert.match(source, new RegExp(`\\.\\/js\\/site-favorites\\.js\\?v=${escapedVersion}`));
+  assert.match(source, new RegExp(`\\.\\/js\\/site-picker\\.js\\?v=${escapedVersion}`));
+  assert.match(source, new RegExp(`\\.\\/js\\/file-hash\\.js\\?v=${escapedVersion}`));
   assert.match(source, /\.\/images\/logo-spini\.png/);
   assert.match(source, /cantiere-media-shell-\$\{APP_VERSION\}/);
 });

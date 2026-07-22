@@ -1,12 +1,12 @@
-# Verifica release 1.3.0
+# Verifica release 1.4.1
 
 Data: 2026-07-22.
 
 ## Controlli completati
 
-- `npm test`: 46 test superati su 46.
-- `npm run check`: 32 file JavaScript validi.
-- versione `1.3.0` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
+- `npm test`: 52 test superati su 52.
+- `npm run check`: 35 file JavaScript validi.
+- versione `1.4.1` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
 - logo Impresa Spini, palette coordinata e nuove icone PWA inclusi nell'application shell;
 - asset PWA e tre icone verificate nelle dimensioni dichiarate;
 - assenza delle sezioni `I miei upload`, `Preferiti archivio` e `Preferiti upload` verificata;
@@ -20,6 +20,12 @@ Data: 2026-07-22.
 - selezione `Tutti i cantieri` disponibile soltanto nell'Archivio;
 - query `Tutti i cantieri` servita da quattro indici globali IndexedDB, senza scansione completa;
 - palette neutra con rosso aziendale e uso ridotto del blu verificata staticamente;
+- sessione persistente verificata: ripristino consentito solo per utente esistente e attivo;
+- logout esplicito collegato alla cancellazione della sessione persistente;
+- SHA-256 verificato su contenuti identici e differenti;
+- indici IndexedDB `siteContentHash` univoco per cantiere e `siteTypeSize` presenti;
+- duplicati classificati come ignorati e non salvati;
+- compatibilita con media storici senza hash verificata strutturalmente tramite ricerca mirata per tipo e dimensione;
 
 
 I test coprono autenticazione PIN, EXIF JPEG, permessi, query planner IndexedDB, condivisione mista, controlli video, date della galleria, densita della griglia, virtualizzazione, priorita del caricamento, cantieri preferiti e trasformazioni del viewer.
@@ -40,11 +46,11 @@ npm run smoke
 CHROMIUM_PATH=/percorso/chromium npm run smoke
 ```
 
-## Collaudo specifico della release 1.3.0
+## Collaudo specifico della release 1.4.1
 
 Su Samsung/Android:
 
-1. aggiornare l'app e controllare `Versione 1.3.0` nel menu;
+1. aggiornare l'app e controllare `Versione 1.4.1` nel menu;
 2. verificare logo, sfondi neutri, azioni rosse e uso limitato del blu;
 3. aprire il selettore della schermata Carica e verificare l'ordine: preferiti alfabetici, attivi alfabetici, conclusi alfabetici;
 4. aprire l'Archivio e verificare che i preferiti del relativo selettore siano indipendenti da quelli del Caricamento;
@@ -69,3 +75,15 @@ Su iPhone/iOS ripetere gli stessi punti, prestando particolare attenzione agli e
 8. aggiornamento senza perdita di utenti, cantieri, media e preferenze cantieri.
 
 La capacita effettiva deve essere misurata sui dispositivi scelti dall'impresa.
+
+
+## Collaudo specifico di sessione e duplicati
+
+1. accedere con PIN, chiudere completamente l'app senza usare `Esci` e riaprirla: deve aprirsi direttamente sulla schermata di caricamento;
+2. premere `Esci` e riaprire l'app: deve ricomparire la richiesta PIN;
+3. caricare una foto, poi selezionare nuovamente lo stesso file nello stesso cantiere anche con nome diverso: il secondo caricamento deve essere ignorato;
+4. selezionare nello stesso cantiere, in un unico caricamento, due copie identiche e un file diverso: devono risultare un duplicato ignorato e due media complessivi presenti soltanto una volta ciascuno;
+5. ripetere la prova con un video breve;
+6. caricare la stessa foto o lo stesso video in un cantiere differente: il file deve essere accettato;
+7. tornare al primo cantiere e riprovare lo stesso file: deve essere ignorato come duplicato;
+8. verificare un file gia salvato con una release precedente: il nuovo tentativo deve essere riconosciuto cercando solo nel cantiere selezionato, senza eseguire una scansione globale dell'archivio.

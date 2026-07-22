@@ -1,13 +1,17 @@
-import { LIMITS, MEDIA_TYPES, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.3.0';
+import { LIMITS, MEDIA_TYPES, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.4.1';
 import {
   deleteMediaAuthorizedBatch,
   getMediaBlob,
+  getMediaBySiteAndContentHash,
+  getMediaCandidatesBySiteTypeAndSize,
   getRecord,
   getThumbnailBlob,
   putMediaWithBlob,
   putThumbnailBlob,
-} from './db.js?v=1.3.0';
-import { readExifDate } from './exif.js?v=1.3.0';
+  setMediaContentHash,
+} from './db.js?v=1.4.1';
+import { readExifDate } from './exif.js?v=1.4.1';
+import { sha256Blob } from './file-hash.js?v=1.4.1';
 import {
   createId,
   fileExtension,
@@ -15,7 +19,7 @@ import {
   formatDateTime,
   formatDuration,
   isQuotaError,
-} from './utils.js?v=1.3.0';
+} from './utils.js?v=1.4.1';
 
 const thumbnailJobs = new Map();
 const thumbnailQueue = [];
@@ -127,7 +131,7 @@ async function inspectVideo(file) {
   }
 }
 
-export async function inspectMediaFile(file) {
+function validateMediaFileBasics(file) {
   const mediaType = detectMediaType(file);
   if (!mediaType) {
     throw new MediaValidationError(`Formato non supportato: ${file?.name ?? 'file'}`, 'UNSUPPORTED_FORMAT');
@@ -135,13 +139,61 @@ export async function inspectMediaFile(file) {
   if (!file.size) {
     throw new MediaValidationError(`Il file ${file.name} e vuoto.`, 'EMPTY_FILE');
   }
-
   if (mediaType === MEDIA_TYPES.VIDEO && file.size > LIMITS.VIDEO_MAX_BYTES) {
     throw new MediaValidationError(
       `${file.name}: il video supera ${formatBytes(LIMITS.VIDEO_MAX_BYTES)}.`,
       'VIDEO_TOO_LARGE',
     );
   }
+  return mediaType;
+}
+
+function duplicateMessage(file) {
+  return `${file.name}: file gia presente nel cantiere selezionato.`;
+}
+
+async function storeLegacyHash(candidate, contentHash) {
+  try {
+    await setMediaContentHash(candidate.id, contentHash);
+  } catch (error) {
+    if (error?.name !== 'ConstraintError') throw error;
+  }
+}
+
+export async function findExactDuplicate(file, siteId, mediaType, contentHash = null) {
+  if (!siteId) throw new MediaValidationError('Cantiere non valido.', 'SITE_REQUIRED');
+  const hash = contentHash ?? await sha256Blob(file);
+  const indexed = await getMediaBySiteAndContentHash(siteId, hash);
+  if (indexed) return { duplicate: indexed, contentHash: hash };
+
+  const candidates = await getMediaCandidatesBySiteTypeAndSize(
+    siteId,
+    mediaType,
+    file.size,
+  );
+  for (const candidate of candidates) {
+    if (candidate.contentHash) {
+      if (candidate.contentHash === hash) return { duplicate: candidate, contentHash: hash };
+      continue;
+    }
+
+    const storedBlob = await getMediaBlob(candidate.id);
+    if (!storedBlob) continue;
+    let candidateHash;
+    try {
+      candidateHash = await sha256Blob(storedBlob);
+    } catch {
+      continue;
+    }
+    await storeLegacyHash(candidate, candidateHash);
+    if (candidateHash === hash) return { duplicate: candidate, contentHash: hash };
+  }
+
+  return { duplicate: null, contentHash: hash };
+}
+
+export async function inspectMediaFile(file, knownMediaType = null) {
+  const mediaType = knownMediaType ?? validateMediaFileBasics(file);
 
   const details = mediaType === MEDIA_TYPES.PHOTO
     ? await inspectPhoto(file)
@@ -183,7 +235,32 @@ export async function saveMediaFile(file, site, user) {
     throw new MediaValidationError('L\'utente non e piu attivo.', 'USER_UNAVAILABLE');
   }
 
-  const inspection = await inspectMediaFile(file);
+  const mediaType = validateMediaFileBasics(file);
+  let duplicateResult;
+  try {
+    duplicateResult = await findExactDuplicate(file, storedSite.id, mediaType);
+  } catch (error) {
+    if (error?.code === 'CRYPTO_UNAVAILABLE') {
+      throw new MediaValidationError(error.message, 'HASH_UNAVAILABLE');
+    }
+    throw error;
+  }
+  if (duplicateResult.duplicate) {
+    throw new MediaValidationError(
+      duplicateMessage(file),
+      'DUPLICATE_MEDIA',
+    );
+  }
+
+  const estimate = await getStorageEstimate();
+  if (estimate?.quota && file.size > estimate.available) {
+    throw new MediaValidationError(
+      `Spazio insufficiente. Servono ${formatBytes(file.size)}, disponibili circa ${formatBytes(estimate.available)}.`,
+      'QUOTA_EXCEEDED',
+    );
+  }
+
+  const inspection = await inspectMediaFile(file, mediaType);
   const uploadDate = Date.now();
   const metadata = {
     id: createId('media'),
@@ -195,6 +272,7 @@ export async function saveMediaFile(file, site, user) {
     fileName: file.name || `${inspection.mediaType}-${uploadDate}`,
     mimeType: file.type || (inspection.mediaType === MEDIA_TYPES.PHOTO ? 'image/jpeg' : 'video/mp4'),
     size: file.size,
+    contentHash: duplicateResult.contentHash,
     width: inspection.width,
     height: inspection.height,
     duration: inspection.duration,
@@ -206,6 +284,12 @@ export async function saveMediaFile(file, site, user) {
   try {
     return await putMediaWithBlob(metadata, file);
   } catch (error) {
+    if (error?.code === 'DUPLICATE_MEDIA' || error?.name === 'ConstraintError') {
+      throw new MediaValidationError(
+        duplicateMessage(file),
+        'DUPLICATE_MEDIA',
+      );
+    }
     if (isQuotaError(error)) {
       throw new MediaValidationError(
         'Spazio locale insufficiente. Liberare memoria sul dispositivo e riprovare.',

@@ -14,10 +14,19 @@ In produzione l'app deve essere pubblicata su HTTPS. Non disattivare la Content 
 
 ## Dati e backup
 
-La release 1.3.0 conserva i dati su un solo dispositivo e non include sincronizzazione o backup completo. La cancellazione dei dati del sito, il ripristino del telefono o alcune politiche di storage del sistema possono rendere i file irrecuperabili.
+La release 1.4.1 conserva i dati su un solo dispositivo e non include sincronizzazione o backup completo. La cancellazione dei dati del sito, il ripristino del telefono o alcune politiche di storage del sistema possono rendere i file irrecuperabili.
 
 Per media aziendali non sostituibili e necessario definire una procedura di backup verificata prima della distribuzione estesa. Una futura integrazione puo aggiungere esportazione cifrata o sincronizzazione opzionale senza modificare il modello offline-first.
 
 ## Segnalazione problemi
 
 Prima di distribuire una modifica che riguarda autenticazione, permessi, cancellazioni, importazione o migrazioni IndexedDB, eseguire tutti i test e una prova su dispositivi Android e iPhone reali.
+
+## Sessione persistente e dispositivo
+
+La sessione rimane attiva fino al comando `Esci`. Di conseguenza, chi puo sbloccare il telefono o il profilo del computer puo aprire l'app senza reinserire il PIN. Il dispositivo deve quindi essere protetto da codice, impronta o altro blocco di sistema. La sessione contiene solo l'identificativo utente; il PIN continua a essere derivato con PBKDF2 e non viene memorizzato in chiaro.
+
+## Impronte dei file
+
+Le impronte SHA-256 servono esclusivamente a riconoscere duplicati esatti all'interno del cantiere selezionato. Non permettono di ricostruire foto o video e non vengono trasmesse fuori dal dispositivo. File visivamente simili ma ricodificati, ritagliati o modificati producono impronte diverse e non vengono considerati duplicati.
+

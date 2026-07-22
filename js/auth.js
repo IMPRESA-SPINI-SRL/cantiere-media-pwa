@@ -1,20 +1,20 @@
-import { LIMITS, ROLES, STORE_NAMES } from './config.js?v=1.3.0';
+import { LIMITS, ROLES, STORE_NAMES } from './config.js?v=1.4.1';
 import {
   deleteSetting,
   getRecord,
   getSetting,
   putInitialUser,
-  putRecord,
   setSetting,
-} from './db.js?v=1.3.0';
+} from './db.js?v=1.4.1';
 import {
   base64ToBytes,
   bytesToBase64,
   createId,
   normalizeText,
-} from './utils.js?v=1.3.0';
+} from './utils.js?v=1.4.1';
 
 let currentUser = null;
+const SESSION_SETTING_KEY = 'auth-session';
 
 export class AuthError extends Error {
   constructor(message, code = 'AUTH_ERROR', details = {}) {
@@ -103,6 +103,36 @@ export async function verifyPin(pin, user) {
   return timingSafeEqual(actual, base64ToBytes(user.pinHash));
 }
 
+export function isRestorableSession(session, user) {
+  return Boolean(
+    session?.userId
+    && user?.id === session.userId
+    && user.active !== false
+  );
+}
+
+async function persistSession(userId) {
+  await setSetting(SESSION_SETTING_KEY, {
+    userId,
+    authenticatedAt: Date.now(),
+  });
+}
+
+export async function restoreSession() {
+  const session = await getSetting(SESSION_SETTING_KEY, null);
+  if (!session?.userId) return null;
+
+  const user = await getRecord(STORE_NAMES.USERS, session.userId);
+  if (!isRestorableSession(session, user)) {
+    await deleteSetting(SESSION_SETTING_KEY);
+    currentUser = null;
+    return null;
+  }
+
+  currentUser = toPublicUser(user);
+  return currentUser;
+}
+
 export async function bootstrapAdministrator(name, pin) {
   const normalizedName = normalizeText(name);
   if (!normalizedName) {
@@ -122,6 +152,7 @@ export async function bootstrapAdministrator(name, pin) {
   };
   await putInitialUser(user);
   currentUser = toPublicUser(user);
+  await persistSession(user.id);
   return currentUser;
 }
 
@@ -178,10 +209,12 @@ export async function login(userId, pin) {
 
   await deleteSetting(throttleKey(userId));
   currentUser = toPublicUser(user);
+  await persistSession(user.id);
   return currentUser;
 }
 
-export function logout() {
+export async function logout() {
+  await deleteSetting(SESSION_SETTING_KEY);
   currentUser = null;
 }
 

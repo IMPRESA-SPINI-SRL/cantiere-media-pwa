@@ -1,4 +1,4 @@
-import { LIMITS, ROLES } from './config.js?v=1.3.0';
+import { LIMITS, ROLES } from './config.js?v=1.4.1';
 
 export function isAdministrator(user) {
   return user?.role === ROLES.ADMIN && user?.active !== false;

@@ -68,7 +68,7 @@ Chiave: `mediaId`. La miniatura viene generata quando la card entra vicino al vi
 
 ### `favorites`
 
-Store storico dei preferiti media, mantenuto nello schema per compatibilita e per la cancellazione a cascata di eventuali record creati da versioni precedenti. La release 1.3.0 non espone piu viste o comandi per i preferiti media.
+Store storico dei preferiti media, mantenuto nello schema per compatibilita e per la cancellazione a cascata di eventuali record creati da versioni precedenti. La release 1.4.0 non espone piu viste o comandi per i preferiti media.
 
 ### `settings`
 
@@ -183,4 +183,18 @@ npm run smoke
 
 ## Archivio trasversale a tutti i cantieri
 
-La selezione `Tutti i cantieri` non esegue scansioni complete. La versione 1.3.0 introduce gli indici globali `allDate`, `allTypeDate`, `allAuthorDate` e `allTypeAuthorDate`, scelti dal query planner in base ai filtri attivi.
+La selezione `Tutti i cantieri` non esegue scansioni complete. La versione 1.4.0 introduce gli indici globali `allDate`, `allTypeDate`, `allAuthorDate` e `allTypeAuthorDate`, scelti dal query planner in base ai filtri attivi.
+
+## Sessione locale persistente
+
+`auth.js` registra nello store `settings` soltanto l'identificativo dell'utente autenticato e la data di autenticazione. All'avvio `restoreSession()` rilegge il record utente e accetta la sessione esclusivamente se l'utente esiste ed e attivo. Il PIN e le credenziali PBKDF2 non vengono copiati nella sessione.
+
+## Deduplicazione dei media
+
+`file-hash.js` calcola SHA-256 sul contenuto binario completo. Lo store `media` usa:
+
+- indice composto univoco `siteContentHash` (`siteId`, `contentHash`), che impedisce atomicamente due salvataggi dello stesso contenuto nello stesso cantiere ma consente lo stesso file in cantieri differenti;
+- indice composto `siteTypeSize` (`siteId`, `mediaType`, `size`), usato per individuare soltanto i possibili duplicati storici privi di hash nel cantiere selezionato.
+
+La migrazione elimina gli indici globali `contentHash` e `typeSize` della release 1.4.0 e crea i nuovi indici per cantiere. Non ricalcola tutte le impronte all'avvio. Quando arriva un nuovo file, vengono esaminati solo i record dello stesso cantiere, con stesso tipo e stessa dimensione; le impronte storiche vengono aggiornate progressivamente.
+

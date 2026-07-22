@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createPinCredentials,
+  isRestorableSession,
   toPublicUser,
   validatePin,
   verifyPin,
@@ -32,4 +33,13 @@ test('public user snapshots do not expose PIN derivation fields', () => {
     pinVersion: 1,
   });
   assert.deepEqual(publicUser, { id: 'user-1', name: 'Operatore' });
+});
+
+
+test('la sessione persistente viene ripristinata solo per un utente attivo corrispondente', () => {
+  const session = { userId: 'user-1', authenticatedAt: Date.now() };
+  assert.equal(isRestorableSession(session, { id: 'user-1', active: true }), true);
+  assert.equal(isRestorableSession(session, { id: 'user-1', active: false }), false);
+  assert.equal(isRestorableSession(session, { id: 'user-2', active: true }), false);
+  assert.equal(isRestorableSession(null, { id: 'user-1', active: true }), false);
 });

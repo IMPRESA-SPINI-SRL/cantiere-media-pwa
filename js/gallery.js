@@ -1,6 +1,6 @@
-import { LIMITS, MEDIA_TYPES } from './config.js?v=1.3.0';
-import { queryMediaPage } from './db.js?v=1.3.0';
-import { getOrCreateThumbnail, mediaDescription } from './media.js?v=1.3.0';
+import { LIMITS, MEDIA_TYPES } from './config.js?v=1.4.1';
+import { queryMediaPage } from './db.js?v=1.4.1';
+import { getOrCreateThumbnail, mediaDescription } from './media.js?v=1.4.1';
 
 const LONG_PRESS_MS = 480;
 const MOVE_TOLERANCE = 12;

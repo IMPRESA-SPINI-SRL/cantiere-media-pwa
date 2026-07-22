@@ -63,6 +63,9 @@ const packageJson = JSON.parse(await readFile(resolve(root, 'package.json'), 'ut
 const configSource = await readFile(resolve(root, 'js/config.js'), 'utf8');
 const appSource = await readFile(resolve(root, 'js/app.js'), 'utf8');
 const databaseSource = await readFile(resolve(root, 'js/db.js'), 'utf8');
+const authSource = await readFile(resolve(root, 'js/auth.js'), 'utf8');
+const uploadSource = await readFile(resolve(root, 'js/upload.js'), 'utf8');
+const hashSource = await readFile(resolve(root, 'js/file-hash.js'), 'utf8');
 const indexSource = await readFile(resolve(root, 'index.html'), 'utf8');
 const serviceWorkerSource = await readFile(resolve(root, 'service-worker.js'), 'utf8');
 const changelog = await readFile(resolve(root, 'CHANGELOG.md'), 'utf8');
@@ -80,6 +83,25 @@ if (!serviceWorkerSource.includes(`APP_VERSION = '${version}'`)) {
 if (!changelog.includes(`## [${version}]`)) {
   throw new Error('La versione corrente non e registrata in CHANGELOG.md.');
 }
+
+if (!configSource.includes('DB_VERSION = 4')) {
+  throw new Error('La release deve migrare IndexedDB alla versione 4.');
+}
+if (!authSource.includes('restoreSession') || !authSource.includes("SESSION_SETTING_KEY = 'auth-session'")) {
+  throw new Error('Sessione persistente non implementata.');
+}
+if (!appSource.includes('const sessionUser = await restoreSession()') || !appSource.includes('await logout()')) {
+  throw new Error('Avvio automatico o logout persistente non collegati all interfaccia.');
+}
+if (!databaseSource.includes("ensureIndex(media, 'siteContentHash', ['siteId', 'contentHash'], { unique: true })")
+  || !databaseSource.includes("ensureIndex(media, 'siteTypeSize', ['siteId', 'mediaType', 'size'])")
+  || !databaseSource.includes("deleteIndex('contentHash')")) {
+  throw new Error('Indici di deduplicazione per cantiere o migrazione indice globale mancanti.');
+}
+if (!hashSource.includes("digest('SHA-256'") || !uploadSource.includes('duplicati ignorati')) {
+  throw new Error('Controllo SHA-256 o feedback duplicati mancante.');
+}
+
 if (appSource.includes('deleteMediaCascade')) {
   throw new Error('L\'interfaccia non deve bypassare i controlli autorizzativi di eliminazione media.');
 }

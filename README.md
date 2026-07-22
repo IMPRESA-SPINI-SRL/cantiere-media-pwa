@@ -1,10 +1,19 @@
 # Cantiere Media PWA
 
-Versione 1.3.0.
+Versione 1.4.1.
 
 PWA mobile-first per acquisire, importare e consultare foto e video dei cantieri senza un backend obbligatorio. La priorita operativa e il caricamento: dopo il login l'utente trova immediatamente il cantiere e i tre comandi `Scatta foto`, `Registra video` e `Scegli dalla galleria`.
 
 Il progetto usa HTML, CSS e JavaScript Vanilla. Dopo il primo caricamento dell'application shell, login, dati e media locali funzionano offline.
+
+
+## Accesso persistente
+
+Dopo un accesso PIN corretto, la sessione resta attiva sul dispositivo anche chiudendo o riaprendo la PWA. Il PIN viene richiesto nuovamente dopo `Esci`, se l'utente viene disattivato oppure se vengono cancellati i dati dell'app. Non vengono memorizzati PIN in chiaro.
+
+## Controllo duplicati
+
+Ogni nuovo file viene identificato con SHA-256 sull'intero contenuto. Un duplicato esatto viene ignorato anche se ha un nome differente o viene selezionato in un altro caricamento, ma il controllo vale soltanto nel cantiere selezionato. Lo stesso file puo quindi essere archiviato in cantieri diversi. Per i media creati con release precedenti, l'impronta viene calcolata solo sui candidati dello stesso cantiere, dello stesso tipo e della stessa dimensione, evitando una scansione completa del database.
 
 ## Avvio locale
 
@@ -92,7 +101,7 @@ Le sezioni media `I miei upload`, `Preferiti archivio` e `Preferiti upload` non 
 - `media`: soli metadati indicizzati.
 - `mediaBlobs`: file originali.
 - `thumbnails`: miniature generate su richiesta.
-- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.3.0.
+- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.4.1.
 - `settings`: impostazioni tecniche, controllo tentativi PIN e cantieri preferiti per utente e contesto.
 
 Le query dell'Archivio usano indici composti e cursori discendenti. Non viene eseguito un caricamento completo dei media per poi filtrarli.

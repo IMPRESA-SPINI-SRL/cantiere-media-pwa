@@ -6,9 +6,9 @@ import {
   MEDIA_FILTERS,
   SITE_STATUSES,
   STORE_NAMES,
-} from './config.js?v=1.3.0';
-import { canDeleteMedia } from './permissions.js?v=1.3.0';
-import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.3.0';
+} from './config.js?v=1.4.1';
+import { canDeleteMedia } from './permissions.js?v=1.4.1';
+import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.4.1';
 
 let databasePromise = null;
 
@@ -56,6 +56,12 @@ function configureSchema(database, transaction) {
   ensureIndex(media, 'mediaType', 'mediaType');
   ensureIndex(media, 'date', 'takenAt');
   ensureIndex(media, 'uploadDate', 'uploadDate');
+  // Release 1.4.1: deduplicazione limitata al singolo cantiere.
+  // L'indice globale univoco della 1.4.0 impediva lo stesso file in cantieri diversi.
+  if (media.indexNames.contains('contentHash')) media.deleteIndex('contentHash');
+  if (media.indexNames.contains('typeSize')) media.deleteIndex('typeSize');
+  ensureIndex(media, 'siteContentHash', ['siteId', 'contentHash'], { unique: true });
+  ensureIndex(media, 'siteTypeSize', ['siteId', 'mediaType', 'size']);
   ensureIndex(media, 'siteDate', ['siteId', 'takenAt', 'id']);
   ensureIndex(media, 'siteTypeDate', ['siteId', 'mediaType', 'takenAt', 'id']);
   ensureIndex(media, 'siteAuthorDate', ['siteId', 'authorId', 'takenAt', 'id']);
@@ -193,6 +199,56 @@ export async function deleteSetting(key) {
   return deleteRecord(STORE_NAMES.SETTINGS, key);
 }
 
+export async function getMediaBySiteAndContentHash(siteId, contentHash) {
+  if (!siteId || !contentHash) return null;
+  const database = await openDatabase();
+  const transaction = database.transaction(STORE_NAMES.MEDIA, 'readonly');
+  return requestToPromise(
+    transaction.objectStore(STORE_NAMES.MEDIA)
+      .index('siteContentHash')
+      .get([siteId, contentHash]),
+  );
+}
+
+export async function getMediaCandidatesBySiteTypeAndSize(siteId, mediaType, size) {
+  if (!siteId || !mediaType || !Number.isFinite(Number(size))) return [];
+  return getAllByIndex(
+    STORE_NAMES.MEDIA,
+    'siteTypeSize',
+    IDBKeyRange.only([siteId, mediaType, Number(size)]),
+  );
+}
+
+export async function setMediaContentHash(mediaId, contentHash) {
+  if (!mediaId || !contentHash) return null;
+  const database = await openDatabase();
+  const transaction = database.transaction(STORE_NAMES.MEDIA, 'readwrite');
+  const store = transaction.objectStore(STORE_NAMES.MEDIA);
+  let updated = null;
+
+  return new Promise((resolve, reject) => {
+    const request = store.get(mediaId);
+    request.onsuccess = () => {
+      const record = request.result;
+      if (!record) return;
+      if (record.contentHash === contentHash) {
+        updated = record;
+        return;
+      }
+      updated = { ...record, contentHash };
+      store.put(updated);
+    };
+    request.onerror = () => transaction.abort();
+    transaction.oncomplete = () => resolve(updated);
+    transaction.onabort = () => reject(
+      transaction.error ?? new Error('Aggiornamento impronta media non riuscito.'),
+    );
+    transaction.onerror = () => {
+      // The abort handler reports the final transaction error.
+    };
+  });
+}
+
 export async function putMediaWithBlob(metadata, blob) {
   const database = await openDatabase();
   const transaction = database.transaction(
@@ -238,7 +294,13 @@ export async function putMediaWithBlob(metadata, blob) {
         siteNameSnapshot: site.name,
         authorNameSnapshot: user.name,
       };
-      media.add(finalMetadata);
+      const mediaRequest = media.add(finalMetadata);
+      mediaRequest.onerror = () => {
+        if (mediaRequest.error?.name === 'ConstraintError') {
+          domainError = new Error("Questo file e gia presente nel cantiere selezionato.");
+          domainError.code = 'DUPLICATE_MEDIA';
+        }
+      };
       mediaBlobs.add({ mediaId: metadata.id, blob });
     };
 

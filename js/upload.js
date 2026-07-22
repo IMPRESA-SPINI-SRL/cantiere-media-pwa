@@ -1,6 +1,5 @@
-import { getStorageEstimate, requestPersistentStorage, saveMediaFile } from './media.js?v=1.3.0';
-import { formatBytes } from './utils.js?v=1.3.0';
-import { closeDialog, openDialog, showToast } from './ui.js?v=1.3.0';
+import { requestPersistentStorage, saveMediaFile } from './media.js?v=1.4.1';
+import { closeDialog, openDialog, showToast } from './ui.js?v=1.4.1';
 
 export class UploadController {
   constructor({
@@ -118,16 +117,6 @@ export class UploadController {
     this.progressWrap.hidden = !value;
   }
 
-  async checkStorage(files) {
-    const estimate = await getStorageEstimate();
-    if (!estimate?.quota) return;
-    const requested = files.reduce((sum, file) => sum + (file.size || 0), 0);
-    if (requested > estimate.available) {
-      throw new Error(
-        `Spazio insufficiente. Servono ${formatBytes(requested)}, disponibili circa ${formatBytes(estimate.available)}.`,
-      );
-    }
-  }
 
   async processFiles(files) {
     if (this.processing) return;
@@ -142,10 +131,10 @@ export class UploadController {
     this.progress.max = files.length;
     this.progress.value = 0;
     const saved = [];
+    const duplicates = [];
     const errors = [];
 
     try {
-      await this.checkStorage(files);
       await requestPersistentStorage();
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
@@ -153,7 +142,8 @@ export class UploadController {
         try {
           saved.push(await saveMediaFile(file, site, user));
         } catch (error) {
-          errors.push({ file, error });
+          if (error?.code === 'DUPLICATE_MEDIA') duplicates.push({ file, error });
+          else errors.push({ file, error });
         }
         this.progress.value = index + 1;
       }
@@ -163,14 +153,28 @@ export class UploadController {
       this.setProcessing(false);
     }
 
-    if (saved.length) {
-      closeDialog(this.dialog);
-      showToast(
-        saved.length === 1 ? 'Media salvato.' : `${saved.length} media salvati.`,
-        { type: 'success' },
-      );
-      await this.onUploaded?.(saved);
+    if (saved.length || duplicates.length) closeDialog(this.dialog);
+
+    if (saved.length) await this.onUploaded?.(saved);
+
+    if (saved.length || duplicates.length) {
+      const messages = [];
+      if (saved.length) {
+        messages.push(saved.length === 1 ? 'Media salvato.' : `${saved.length} media salvati.`);
+      }
+      if (duplicates.length) {
+        messages.push(
+          duplicates.length === 1
+            ? '1 duplicato ignorato.'
+            : `${duplicates.length} duplicati ignorati.`,
+        );
+      }
+      showToast(messages.join(' '), {
+        type: saved.length ? 'success' : 'warning',
+        duration: duplicates.length ? 6000 : 3500,
+      });
     }
+
     if (errors.length) {
       const first = errors[0].error?.message ?? 'Errore di caricamento.';
       const suffix = errors.length > 1 ? ` Altri errori: ${errors.length - 1}.` : '';
