@@ -1,8 +1,7 @@
-import { MEDIA_TYPES } from './config.js?v=1.1.0';
-import { favoriteContextForView, isFavorite, toggleFavorite } from './favorites.js?v=1.1.0';
-import { downloadMedia, getMediaFile, shareMediaItems } from './media.js?v=1.1.0';
-import { clamp, formatBytes, formatDateTime, formatDuration } from './utils.js?v=1.1.0';
-import { closeDialog, openDialog, showToast } from './ui.js?v=1.1.0';
+import { MEDIA_TYPES } from './config.js?v=1.2.0';
+import { downloadMedia, getMediaFile, shareMediaItems } from './media.js?v=1.2.0';
+import { clamp, formatBytes, formatDateTime, formatDuration } from './utils.js?v=1.2.0';
+import { closeDialog, openDialog, showToast } from './ui.js?v=1.2.0';
 
 const INTERACTIVE_TARGET_SELECTOR = 'button, video, input, select, textarea, a[href], [role="button"]';
 const PLAY_SYMBOL = '▶';
@@ -36,6 +35,49 @@ export function getVideoTimelineModel(currentTime, duration) {
   };
 }
 
+const MIN_PHOTO_SCALE = 1;
+const MAX_PHOTO_SCALE = 5;
+const DOUBLE_TAP_SCALE = 2.5;
+const RESET_SNAP_SCALE = 1.18;
+
+export function getContainedMediaSize(stageWidth, stageHeight, mediaWidth, mediaHeight) {
+  const safeStageWidth = Math.max(1, Number(stageWidth) || 1);
+  const safeStageHeight = Math.max(1, Number(stageHeight) || 1);
+  const safeMediaWidth = Math.max(1, Number(mediaWidth) || 1);
+  const safeMediaHeight = Math.max(1, Number(mediaHeight) || 1);
+  const ratio = Math.min(safeStageWidth / safeMediaWidth, safeStageHeight / safeMediaHeight);
+  return {
+    width: safeMediaWidth * ratio,
+    height: safeMediaHeight * ratio,
+  };
+}
+
+export function constrainPhotoTransform({
+  scale,
+  translateX,
+  translateY,
+  stageWidth,
+  stageHeight,
+  mediaWidth,
+  mediaHeight,
+  snapToInitial = false,
+}) {
+  let safeScale = clamp(Number(scale) || MIN_PHOTO_SCALE, MIN_PHOTO_SCALE, MAX_PHOTO_SCALE);
+  if (snapToInitial && safeScale <= RESET_SNAP_SCALE) {
+    return { scale: MIN_PHOTO_SCALE, translateX: 0, translateY: 0, maxX: 0, maxY: 0 };
+  }
+  const base = getContainedMediaSize(stageWidth, stageHeight, mediaWidth, mediaHeight);
+  const maxX = Math.max(0, (base.width * safeScale - Math.max(1, stageWidth)) / 2);
+  const maxY = Math.max(0, (base.height * safeScale - Math.max(1, stageHeight)) / 2);
+  const safeX = clamp(Number(translateX) || 0, -maxX, maxX);
+  const safeY = clamp(Number(translateY) || 0, -maxY, maxY);
+  if (safeScale <= 1.001) {
+    safeScale = MIN_PHOTO_SCALE;
+    return { scale: safeScale, translateX: 0, translateY: 0, maxX, maxY };
+  }
+  return { scale: safeScale, translateX: safeX, translateY: safeY, maxX, maxY };
+}
+
 function updatePlaybackButton(button, model) {
   button.textContent = model.symbol;
   button.setAttribute('aria-label', model.label);
@@ -49,7 +91,6 @@ export class ViewerController {
     transform,
     closeButton,
     shareButton,
-    favoriteButton,
     position,
     caption,
     videoCenterButton,
@@ -60,8 +101,6 @@ export class ViewerController {
     getItems,
     getHasMore,
     ensureIndex,
-    getUser,
-    getViewMode,
     onClose,
   }) {
     Object.assign(this, {
@@ -70,7 +109,6 @@ export class ViewerController {
       transform,
       closeButton,
       shareButton,
-      favoriteButton,
       position,
       caption,
       videoCenterButton,
@@ -81,8 +119,6 @@ export class ViewerController {
       getItems,
       getHasMore,
       ensureIndex,
-      getUser,
-      getViewMode,
       onClose,
     });
     this.index = -1;
@@ -95,8 +131,9 @@ export class ViewerController {
     this.pointers = new Map();
     this.singleGesture = null;
     this.pinchGesture = null;
+    this.pinchActive = false;
     this.lastTap = null;
-    this.favoriteChanged = false;
+    this.settleTimer = null;
     this.renderToken = 0;
     this.bindEvents();
     this.setVideoUiVisible(false);
@@ -105,7 +142,6 @@ export class ViewerController {
   bindEvents() {
     this.closeButton.addEventListener('click', () => this.close());
     this.shareButton.addEventListener('click', () => this.shareCurrent());
-    this.favoriteButton.addEventListener('click', () => this.toggleCurrentFavorite());
     this.videoCenterButton.addEventListener('click', () => this.toggleVideoPlayback());
     this.videoControlButton.addEventListener('click', () => this.toggleVideoPlayback());
     this.videoProgress.addEventListener('input', () => this.seekCurrentVideo());
@@ -129,7 +165,6 @@ export class ViewerController {
   }
 
   async open(index) {
-    this.favoriteChanged = false;
     openDialog(this.dialog);
     await this.showIndex(index);
   }
@@ -149,7 +184,7 @@ export class ViewerController {
     this.media = null;
     this.index = -1;
     this.resetTransform();
-    this.onClose?.({ favoriteChanged: this.favoriteChanged });
+    this.onClose?.();
   }
 
   revokeObjectUrl() {
@@ -165,7 +200,6 @@ export class ViewerController {
     if (!media || token !== this.renderToken || !this.dialog.open) return;
     this.index = index;
     this.media = media;
-    this.favoriteButton.disabled = false;
     this.resetTransform();
     this.clearVideoState();
     this.revokeObjectUrl();
@@ -208,7 +242,6 @@ export class ViewerController {
     const parts = [media.authorNameSnapshot, formatDateTime(media.takenAt), formatBytes(media.size)];
     if (isVideo) parts.push(formatDuration(media.duration));
     this.caption.textContent = parts.filter(Boolean).join('  \u2022  ');
-    await this.updateFavoriteButton(token, media.id);
   }
 
   createVideoElement(source) {
@@ -329,40 +362,6 @@ export class ViewerController {
     if (media) await this.showIndex(target);
   }
 
-  async updateFavoriteButton(token = this.renderToken, mediaId = this.media?.id) {
-    if (!this.media) return;
-    const user = this.getUser();
-    const context = favoriteContextForView(this.getViewMode());
-    const favorite = await isFavorite(user.id, context, mediaId);
-    if (token !== this.renderToken || this.media?.id !== mediaId || !this.dialog.open) return;
-    this.favoriteButton.classList.toggle('is-favorite', favorite);
-    this.favoriteButton.setAttribute('aria-pressed', String(favorite));
-    this.favoriteButton.setAttribute('aria-label', favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti');
-    this.favoriteButton.title = favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti';
-  }
-
-  async toggleCurrentFavorite() {
-    if (!this.media) return;
-    const media = this.media;
-    const token = this.renderToken;
-    const user = this.getUser();
-    const context = favoriteContextForView(this.getViewMode());
-    this.favoriteButton.disabled = true;
-    try {
-      const favorite = await toggleFavorite(user, media, context);
-      this.favoriteChanged = true;
-      if (token === this.renderToken && this.media?.id === media.id && this.dialog.open) {
-        this.favoriteButton.classList.toggle('is-favorite', favorite);
-        this.favoriteButton.setAttribute('aria-pressed', String(favorite));
-      }
-      showToast(favorite ? 'Aggiunto ai preferiti.' : 'Rimosso dai preferiti.', { type: 'success' });
-    } catch (error) {
-      showToast(error?.message ?? 'Errore nei preferiti.', { type: 'error' });
-    } finally {
-      if (token === this.renderToken) this.favoriteButton.disabled = false;
-    }
-  }
-
   async shareCurrent() {
     if (!this.media) return;
     const media = this.media;
@@ -386,24 +385,66 @@ export class ViewerController {
     return this.media?.mediaType === MEDIA_TYPES.PHOTO;
   }
 
-  resetTransform() {
-    this.scale = 1;
+  resetTransform({ animate = false, clearPointers = true } = {}) {
+    if (animate) this.beginSettling();
+    this.scale = MIN_PHOTO_SCALE;
     this.translateX = 0;
     this.translateY = 0;
-    this.pointers.clear();
+    if (clearPointers) this.pointers.clear();
     this.singleGesture = null;
     this.pinchGesture = null;
+    this.pinchActive = false;
     this.lastTap = null;
     this.applyTransform();
+  }
+
+  beginSettling() {
+    clearTimeout(this.settleTimer);
+    this.transform.classList.add('is-settling');
+    this.settleTimer = setTimeout(() => {
+      this.transform.classList.remove('is-settling');
+      this.settleTimer = null;
+    }, 220);
+  }
+
+  stopSettling() {
+    clearTimeout(this.settleTimer);
+    this.settleTimer = null;
+    this.transform.classList.remove('is-settling');
   }
 
   applyTransform() {
     this.transform.style.transform = `translate3d(${this.translateX}px, ${this.translateY}px, 0) scale(${this.scale})`;
   }
 
+  constrainCurrentTransform({ snapToInitial = false, animate = false, apply = true } = {}) {
+    const image = this.transform.querySelector('img');
+    if (!image) return;
+    const stageRect = this.stage.getBoundingClientRect();
+    const constrained = constrainPhotoTransform({
+      scale: this.scale,
+      translateX: this.translateX,
+      translateY: this.translateY,
+      stageWidth: stageRect.width,
+      stageHeight: stageRect.height,
+      mediaWidth: image.naturalWidth,
+      mediaHeight: image.naturalHeight,
+      snapToInitial,
+    });
+    this.scale = constrained.scale;
+    this.translateX = constrained.translateX;
+    this.translateY = constrained.translateY;
+    if (animate) this.beginSettling();
+    if (apply) this.applyTransform();
+  }
+
   onPointerDown(event) {
     if (event.button !== 0) return;
     if (isViewerInteractiveTarget(event.target)) return;
+    if (this.pointers.size === 0) {
+      this.pinchActive = false;
+      this.stopSettling();
+    }
     this.stage.setPointerCapture?.(event.pointerId);
     this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
@@ -422,12 +463,14 @@ export class ViewerController {
       const centerX = (first.x + second.x) / 2 - (rect.left + rect.width / 2);
       const centerY = (first.y + second.y) / 2 - (rect.top + rect.height / 2);
       this.pinchGesture = {
-        distance: Math.hypot(second.x - first.x, second.y - first.y),
+        distance: Math.max(1, Math.hypot(second.x - first.x, second.y - first.y)),
         scale: this.scale,
         contentX: (centerX - this.translateX) / this.scale,
         contentY: (centerY - this.translateY) / this.scale,
       };
+      this.pinchActive = true;
       this.singleGesture = null;
+      this.lastTap = null;
     }
   }
 
@@ -438,17 +481,18 @@ export class ViewerController {
     if (this.pointers.size === 2 && this.isPhoto() && this.pinchGesture) {
       event.preventDefault();
       const [first, second] = [...this.pointers.values()];
-      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      const distance = Math.max(1, Math.hypot(second.x - first.x, second.y - first.y));
       const rect = this.stage.getBoundingClientRect();
       const centerX = (first.x + second.x) / 2 - (rect.left + rect.width / 2);
       const centerY = (first.y + second.y) / 2 - (rect.top + rect.height / 2);
       this.scale = clamp(
-        this.pinchGesture.scale * (distance / Math.max(1, this.pinchGesture.distance)),
-        1,
-        5,
+        this.pinchGesture.scale * (distance / this.pinchGesture.distance),
+        MIN_PHOTO_SCALE,
+        MAX_PHOTO_SCALE,
       );
       this.translateX = centerX - this.pinchGesture.contentX * this.scale;
       this.translateY = centerY - this.pinchGesture.contentY * this.scale;
+      this.constrainCurrentTransform({ apply: false });
       this.applyTransform();
       return;
     }
@@ -459,6 +503,7 @@ export class ViewerController {
       this.translateY += event.clientY - this.singleGesture.lastY;
       this.singleGesture.lastX = event.clientX;
       this.singleGesture.lastY = event.clientY;
+      this.constrainCurrentTransform({ apply: false });
       this.applyTransform();
     }
   }
@@ -468,7 +513,7 @@ export class ViewerController {
     this.pointers.delete(event.pointerId);
     this.stage.releasePointerCapture?.(event.pointerId);
 
-    if (this.pointers.size === 1 && this.isPhoto()) {
+    if (this.pointers.size === 1 && this.isPhoto() && this.pinchActive) {
       const [remaining] = [...this.pointers.entries()];
       this.singleGesture = {
         pointerId: remaining[0],
@@ -484,21 +529,29 @@ export class ViewerController {
     }
     if (this.pointers.size) return;
 
+    const endedPinch = this.pinchActive || gesture?.suppressNavigation;
     this.pinchGesture = null;
+    this.pinchActive = false;
+    if (endedPinch && this.isPhoto()) {
+      this.constrainCurrentTransform({ snapToInitial: true, animate: true });
+      this.singleGesture = null;
+      this.lastTap = null;
+      return;
+    }
     if (!gesture) return;
+
     const deltaX = event.clientX - gesture.startX;
     const deltaY = event.clientY - gesture.startY;
     const distance = Math.hypot(deltaX, deltaY);
     const elapsed = performance.now() - gesture.startTime;
+    const isTap = distance < 12 && elapsed < 280 && !gesture.suppressNavigation;
 
-    if (this.scale > 1 && this.isPhoto()) {
-      this.clampTranslation();
-    } else if (gesture.suppressNavigation) {
-      this.applyTransform();
-    } else if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
-      this.navigate(deltaX < 0 ? 1 : -1);
-    } else if (distance < 12 && elapsed < 280 && this.isPhoto()) {
+    if (isTap && this.isPhoto()) {
       this.handleTap(event.clientX, event.clientY);
+    } else if (this.scale > 1 && this.isPhoto()) {
+      this.constrainCurrentTransform({ animate: true });
+    } else if (!gesture.suppressNavigation && Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      this.navigate(deltaX < 0 ? 1 : -1);
     }
     this.singleGesture = null;
   }
@@ -518,40 +571,19 @@ export class ViewerController {
   }
 
   toggleZoomAt(clientX, clientY) {
-    if (this.scale > 1) {
-      this.scale = 1;
-      this.translateX = 0;
-      this.translateY = 0;
-    } else {
-      const rect = this.stage.getBoundingClientRect();
-      this.scale = 2.5;
-      this.translateX = (rect.left + rect.width / 2 - clientX) * (this.scale - 1);
-      this.translateY = (rect.top + rect.height / 2 - clientY) * (this.scale - 1);
-      this.clampTranslation(false);
+    if (this.scale > 1.01) {
+      this.resetTransform({ animate: true, clearPointers: false });
+      return;
     }
-    this.applyTransform();
+    const rect = this.stage.getBoundingClientRect();
+    this.scale = DOUBLE_TAP_SCALE;
+    this.translateX = (rect.left + rect.width / 2 - clientX) * (this.scale - 1);
+    this.translateY = (rect.top + rect.height / 2 - clientY) * (this.scale - 1);
+    this.constrainCurrentTransform({ animate: true });
   }
 
   clampTranslation(apply = true) {
-    const image = this.transform.querySelector('img');
-    if (!image) return;
-    const stageRect = this.stage.getBoundingClientRect();
-    const ratio = (image.naturalWidth || 1) / (image.naturalHeight || 1);
-    let baseWidth = stageRect.width;
-    let baseHeight = baseWidth / ratio;
-    if (baseHeight > stageRect.height) {
-      baseHeight = stageRect.height;
-      baseWidth = baseHeight * ratio;
-    }
-    const maxX = Math.max(0, (baseWidth * this.scale - stageRect.width) / 2);
-    const maxY = Math.max(0, (baseHeight * this.scale - stageRect.height) / 2);
-    this.translateX = clamp(this.translateX, -maxX, maxX);
-    this.translateY = clamp(this.translateY, -maxY, maxY);
-    if (this.scale <= 1.01) {
-      this.scale = 1;
-      this.translateX = 0;
-      this.translateY = 0;
-    }
-    if (apply) this.applyTransform();
+    this.constrainCurrentTransform({ snapToInitial: true, apply });
   }
+
 }

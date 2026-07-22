@@ -3,6 +3,30 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
+## [1.2.0] - 2026-07-21
+
+### Aggiunto
+
+- Logo ufficiale Impresa Spini nelle schermate di accesso, caricamento, menu e icone PWA.
+- Palette grafica coordinata ai colori blu e rosso del logo aziendale.
+- Selettore cantieri con stella accanto a ogni cantiere.
+- Cantieri preferiti personali e indipendenti tra schermata di caricamento e Archivio.
+- Ordinamento automatico dei cantieri preferiti in testa al rispettivo elenco.
+- Test automatici per preferiti cantieri, vincoli di trascinamento e ripristino zoom.
+
+### Corretto
+
+- Il doppio tap su una fotografia gia ingrandita ripristina esattamente la vista iniziale.
+- Il trascinamento durante pinch e pan e limitato ai bordi utili della fotografia, evitando distacchi dai bordi dello schermo.
+- Il pinch vicino alla scala iniziale scatta automaticamente a `1x`, con posizione centrata.
+- Rimossa una duplicazione del campo indirizzo nell'editor cantieri.
+
+### Rimosso
+
+- Sezioni `I miei upload`, `Preferiti archivio` e `Preferiti upload` dal menu di tutti gli utenti.
+- Comandi e moduli UI dei preferiti media non piu utilizzati.
+- Testi ridondanti `OPERAZIONE PRINCIPALE`, `Seleziona il cantiere e scegli subito come acquisire il materiale.` e `Destinazione: Scegli una delle tre modalita qui sopra` dalla schermata di caricamento.
+
 ## [1.1.0] - 2026-07-21
 
 ### Aggiunto

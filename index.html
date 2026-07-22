@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#315c52">
+  <meta name="theme-color" content="#1f4592">
   <meta name="color-scheme" content="light">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -11,10 +11,10 @@
   <meta name="format-detection" content="telephone=no">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>Cantiere Media</title>
-  <link rel="manifest" href="./manifest.json?v=1.1.0">
+  <link rel="manifest" href="./manifest.json?v=1.2.0">
   <link rel="apple-touch-icon" href="./icons/icon-180.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./css/style.css?v=1.1.0">
+  <link rel="stylesheet" href="./css/style.css?v=1.2.0">
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
@@ -39,7 +39,7 @@
 
   <section id="auth-screen" class="auth-screen">
     <div class="auth-card">
-      <div class="brand-mark" aria-hidden="true">CM</div>
+      <div class="brand-logo-wrap"><img class="brand-logo" src="./images/logo-spini.png" alt="Impresa Spini"></div>
       <h1>Cantiere Media</h1>
       <p class="muted">Foto e video di cantiere, disponibili offline.</p>
 
@@ -106,15 +106,19 @@
     <main class="app-main">
       <section id="upload-home" class="upload-home" aria-labelledby="upload-home-title">
         <div class="upload-home-hero">
-          <span class="upload-home-kicker">Operazione principale</span>
+          <div class="upload-brand"><img src="./images/logo-spini.png" alt="Impresa Spini"></div>
           <h2 id="upload-home-title">Carica foto e video</h2>
-          <p>Seleziona il cantiere e scegli subito come acquisire il materiale.</p>
-          <label class="field upload-site-field">
+          <div class="field upload-site-field">
             <span>Cantiere di destinazione</span>
-            <select id="upload-site-select" required>
+            <button id="upload-site-picker-trigger" class="site-picker-trigger site-picker-trigger-light" type="button">
+              <span class="site-picker-trigger-label">Seleziona un cantiere...</span>
+              <svg class="site-picker-trigger-star" aria-hidden="true"><use href="#icon-star"></use></svg>
+              <span class="site-picker-trigger-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <select id="upload-site-select" class="visually-hidden" tabindex="-1" aria-hidden="true" required>
               <option value="">Seleziona un cantiere...</option>
             </select>
-          </label>
+          </div>
         </div>
 
         <div class="upload-home-actions" aria-label="Modalità di caricamento">
@@ -132,9 +136,9 @@
           </button>
         </div>
 
-        <div id="upload-home-feedback" class="upload-home-feedback" aria-live="polite">
-          <strong>Pronto per il caricamento</strong>
-          <span>Le foto e i video vengono salvati sul dispositivo e restano disponibili offline.</span>
+        <div id="upload-home-feedback" class="upload-home-feedback" aria-live="polite" hidden>
+          <strong></strong>
+          <span></span>
         </div>
 
         <button id="open-archive-button" class="button button-text upload-home-archive" type="button">
@@ -144,12 +148,17 @@
 
       <section id="archive-view" class="archive-view" hidden>
         <form id="filter-form" class="filter-panel" autocomplete="off">
-          <label class="field field-site">
+          <div class="field field-site">
             <span>Cantiere</span>
-            <select id="site-filter" required>
+            <button id="archive-site-picker-trigger" class="site-picker-trigger" type="button">
+              <span class="site-picker-trigger-label">Seleziona un cantiere...</span>
+              <svg class="site-picker-trigger-star" aria-hidden="true"><use href="#icon-star"></use></svg>
+              <span class="site-picker-trigger-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <select id="site-filter" class="visually-hidden" tabindex="-1" aria-hidden="true" required>
               <option value="">Seleziona un cantiere...</option>
             </select>
-          </label>
+          </div>
           <div class="filter-row">
             <label class="field">
               <span>Foto / Video</span>
@@ -187,9 +196,12 @@
 
   <dialog id="menu-dialog" class="menu-dialog">
     <div class="menu-header">
-      <div>
-        <strong>Cantiere Media</strong>
-        <span id="menu-user-label"></span>
+      <div class="menu-brand">
+        <img src="./images/logo-spini.png" alt="Impresa Spini">
+        <div>
+          <strong>Cantiere Media</strong>
+          <span id="menu-user-label"></span>
+        </div>
       </div>
       <button id="menu-close" class="icon-button" type="button" aria-label="Chiudi menu">
         <svg><use href="#icon-close"></use></svg>
@@ -200,9 +212,6 @@
         <svg><use href="#icon-upload"></use></svg><span>Carica foto e video</span>
       </button>
       <button class="menu-item" type="button" data-view="archive">Archivio</button>
-      <button class="menu-item" type="button" data-view="my-uploads">I miei upload</button>
-      <button class="menu-item" type="button" data-view="favorite-archive">Preferiti archivio</button>
-      <button class="menu-item" type="button" data-view="favorite-uploads">Preferiti upload</button>
     </nav>
     <div id="admin-menu" class="menu-list menu-section" hidden>
       <span class="menu-section-title">Amministrazione</span>
@@ -224,6 +233,18 @@
     <div class="menu-footer">
       <div id="storage-summary">Spazio: calcolo...</div>
       <div id="version-label"></div>
+    </div>
+  </dialog>
+
+  <dialog id="site-picker-dialog" class="modal bottom-sheet site-picker-dialog">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="site-picker-title">Seleziona cantiere</h2>
+        <button id="site-picker-close" class="icon-button" type="button" aria-label="Chiudi">
+          <svg><use href="#icon-close"></use></svg>
+        </button>
+      </div>
+      <div id="site-picker-list" class="site-picker-list"></div>
     </div>
   </dialog>
 
@@ -337,9 +358,6 @@
         <button id="viewer-share" class="icon-button icon-button-light" type="button" aria-label="Condividi">
           <svg><use href="#icon-share"></use></svg>
         </button>
-        <button id="viewer-favorite" class="icon-button icon-button-light favorite-button" type="button" aria-label="Aggiungi ai preferiti" aria-pressed="false">
-          <svg><use href="#icon-star"></use></svg>
-        </button>
       </header>
       <div id="viewer-stage" class="viewer-stage">
         <div id="viewer-transform" class="viewer-transform"></div>
@@ -360,6 +378,6 @@
   </div>
   <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 
-  <script type="module" src="./js/bootstrap-1.1.0.js"></script>
+  <script type="module" src="./js/bootstrap-1.2.0.js"></script>
 </body>
 </html>

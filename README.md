@@ -1,6 +1,6 @@
 # Cantiere Media PWA
 
-Versione 1.1.0.
+Versione 1.2.0.
 
 PWA mobile-first per acquisire, importare e consultare foto e video dei cantieri senza un backend obbligatorio. La priorita operativa e il caricamento: dopo il login l'utente trova immediatamente il cantiere e i tre comandi `Scatta foto`, `Registra video` e `Scegli dalla galleria`.
 
@@ -48,6 +48,24 @@ L'Archivio:
 
 Il gesto sulla griglia modifica la dimensione delle miniature. Il pinch dentro il visualizzatore continua invece a ingrandire la singola fotografia.
 
+## Zoom della singola fotografia
+
+Nel viewer fotografico:
+
+- il doppio tap alterna tra ingrandimento e vista iniziale;
+- il pan con uno o due dita resta vincolato ai bordi utili della fotografia;
+- avvicinando il pinch alla scala iniziale, la foto scatta esattamente a `1x` e si ricentra;
+- la foto non puo essere trascinata fino a lasciare aree vuote oltre i limiti consentiti.
+
+## Cantieri preferiti
+
+Ogni utente puo toccare la stella accanto a un cantiere. I preferiti vengono mostrati prima degli altri cantieri. Le preferenze sono personali e indipendenti:
+
+- i preferiti scelti nella schermata `Carica` influenzano solo quel selettore;
+- i preferiti scelti nell'`Archivio` influenzano solo il selettore dell'Archivio.
+
+Le sezioni media `I miei upload`, `Preferiti archivio` e `Preferiti upload` non fanno piu parte del menu.
+
 ## Funzioni incluse
 
 - login PIN multiutente con ruoli Amministratore e Utente;
@@ -58,12 +76,13 @@ Il gesto sulla griglia modifica la dimensione delle miniature. Il pinch dentro i
 - limite video di 60 secondi e 100 MB;
 - filtri indicizzati per cantiere, tipo, autore e data;
 - galleria per data con pinch zoom della griglia;
-- viewer fullscreen con swipe, pinch zoom, doppio tap, trascinamento e controlli video applicativi;
-- preferiti personali separati tra Archivio e Upload;
+- viewer fullscreen con swipe, pinch zoom vincolato ai bordi, doppio tap avanti/indietro, ripristino esatto a `1x` e controlli video applicativi;
+- cantieri preferiti personali, con elenchi indipendenti tra Caricamento e Archivio;
+- logo e colori coordinati all'identita visiva Impresa Spini;
 - condivisione Web Share singola e multipla;
 - separazione in due invii quando Android/WhatsApp non accetta foto e video insieme;
 - eliminazione dei propri upload entro 24 ore per utenti normali;
-- validazione transazionale di upload, preferiti ed eliminazioni;
+- validazione transazionale di upload ed eliminazioni;
 - funzionamento offline e installazione PWA.
 
 ## Architettura dati
@@ -73,8 +92,8 @@ Il gesto sulla griglia modifica la dimensione delle miniature. Il pinch dentro i
 - `media`: soli metadati indicizzati.
 - `mediaBlobs`: file originali.
 - `thumbnails`: miniature generate su richiesta.
-- `favorites`: preferiti personali indicizzati per contesto.
-- `settings`: impostazioni tecniche e controllo tentativi PIN.
+- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.2.0.
+- `settings`: impostazioni tecniche, controllo tentativi PIN e cantieri preferiti per utente e contesto.
 
 Le query dell'Archivio usano indici composti e cursori discendenti. Non viene eseguito un caricamento completo dei media per poi filtrarli.
 
@@ -86,7 +105,7 @@ Quando un browser continua a mostrare una versione precedente, avviare la releas
 http://127.0.0.1:8080/repair.html
 ```
 
-La pagina rimuove soltanto Service Worker e cache `cantiere-media-shell-*`. Non elimina IndexedDB, utenti, cantieri, foto, video o preferiti.
+La pagina rimuove soltanto Service Worker e cache `cantiere-media-shell-*`. Non elimina IndexedDB, utenti, cantieri, foto, video o preferenze cantieri.
 
 ## Controlli di qualita
 

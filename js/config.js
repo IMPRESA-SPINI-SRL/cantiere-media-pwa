@@ -1,5 +1,5 @@
 export const APP_NAME = 'Cantiere Media';
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 export const DB_NAME = 'cantiere-media-db';
 export const DB_VERSION = 1;
 
@@ -13,17 +13,9 @@ export const MEDIA_TYPES = Object.freeze({
   VIDEO: 'video',
 });
 
-export const FAVORITE_CONTEXTS = Object.freeze({
-  ARCHIVE: 'archive',
-  UPLOAD: 'upload',
-});
-
 export const VIEW_MODES = Object.freeze({
   UPLOAD: 'upload',
   ARCHIVE: 'archive',
-  MY_UPLOADS: 'my-uploads',
-  FAVORITE_ARCHIVE: 'favorite-archive',
-  FAVORITE_UPLOADS: 'favorite-uploads',
 });
 
 export const MEDIA_FILTERS = Object.freeze({

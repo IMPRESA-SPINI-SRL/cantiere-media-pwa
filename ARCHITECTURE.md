@@ -24,8 +24,9 @@ Cantiere Media e una PWA offline-first senza backend obbligatorio. Le decisioni 
 - `gallery.js`: gruppi per data, layout a righe, pinch della densita, paginazione, virtualizzazione, miniature lazy e selezione prolungata.
 - `media.js`: validazione file, metadati, miniature, condivisione, download e quota storage.
 - `upload.js`: ingressi diretti foto/video/galleria, pipeline sequenziale e avanzamento per file.
-- `viewer.js`: visualizzatore foto/video, gesture e controlli video applicativi.
-- `favorites.js`: preferiti personali separati per contesto Archivio/Upload.
+- `viewer.js`: visualizzatore foto/video, doppio tap, pinch, vincoli di trascinamento e controlli video applicativi.
+- `site-favorites.js`: preferenze cantieri personali e indipendenti per Caricamento e Archivio, persistite in `settings`.
+- `site-picker.js`: elenco cantieri con stella, gruppi preferiti/altri e selezione accessibile.
 - `permissions.js`: regole di autorizzazione pure e testabili.
 - `sites.js`: ciclo di vita dei cantieri e cancellazione a lotti riprendibile.
 - `users.js`: utenti, ruoli, disattivazione e continuita amministrativa.
@@ -67,11 +68,11 @@ Chiave: `mediaId`. La miniatura viene generata quando la card entra vicino al vi
 
 ### `favorites`
 
-Chiave composta logicamente da utente, contesto e media. Gli indici includono `userId` e `context` nel prefisso.
+Store storico dei preferiti media, mantenuto nello schema per compatibilita e per la cancellazione a cascata di eventuali record creati da versioni precedenti. La release 1.2.0 non espone piu viste o comandi per i preferiti media.
 
 ### `settings`
 
-Impostazioni tecniche e stato del throttling PIN.
+Impostazioni tecniche, stato del throttling PIN e preferenze cantieri. Le chiavi dei cantieri preferiti includono `userId` e contesto (`archive` oppure `upload`), quindi le due liste sono indipendenti per ogni utente.
 
 ## Vista iniziale e caricamento
 
@@ -116,6 +117,23 @@ Il numero di colonne varia da 2 a 6. Su Android vengono usati Pointer Events con
 - salva la densita in `localStorage`.
 
 Allargare le dita riduce le colonne e ingrandisce le miniature; avvicinarle aumenta le colonne.
+
+## Zoom e vincoli nel viewer
+
+Il viewer mantiene separati scala e spostamento. Per ogni aggiornamento di pinch o pan calcola la dimensione `contain` effettiva della fotografia e limita `translateX` e `translateY` allo spazio realmente eccedente lo schermo. In questo modo non possono comparire vuoti causati da un trascinamento oltre i bordi.
+
+Il doppio tap e reversibile: a scala iniziale porta alla scala predefinita di ingrandimento, mentre a qualsiasi scala superiore torna a `1x`. Al termine del pinch, una scala vicina a quella iniziale viene normalizzata esattamente a `1x` con traslazione zero.
+
+## Preferiti cantieri
+
+I cantieri preferiti non modificano lo store `sites`. Vengono salvati come array di identificatori in `settings`, con chiavi del tipo:
+
+```text
+site-favorites::<userId>::archive
+site-favorites::<userId>::upload
+```
+
+Il selettore usa una finestra personalizzata per mostrare la stella su ogni riga. L'ordinamento e stabile: prima i preferiti, poi gli altri cantieri nell'ordine restituito da `listSites`. Il cambio di preferenza in un contesto non modifica l'altro.
 
 ## Pipeline upload
 

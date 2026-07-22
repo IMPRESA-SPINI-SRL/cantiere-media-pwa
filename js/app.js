@@ -4,27 +4,34 @@ import {
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.1.0';
+} from './config.js?v=1.2.0';
 import {
   bootstrapAdministrator,
   login,
   logout,
   updateCurrentUserSnapshot,
-} from './auth.js?v=1.1.0';
+} from './auth.js?v=1.2.0';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.1.0';
-import { FilterController, isFavoriteView, viewModeLabel } from './filters.js?v=1.1.0';
-import { GalleryController } from './gallery.js?v=1.1.0';
+} from './db.js?v=1.2.0';
+import { FilterController, viewModeLabel } from './filters.js?v=1.2.0';
+import { GalleryController } from './gallery.js?v=1.2.0';
+import {
+  getSiteFavoriteIds,
+  SITE_FAVORITE_CONTEXTS,
+  sortSitesByFavorites,
+  toggleSiteFavorite,
+} from './site-favorites.js?v=1.2.0';
+import { SitePickerController } from './site-picker.js?v=1.2.0';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
   partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.1.0';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.1.0';
+} from './media.js?v=1.2.0';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.2.0';
 import {
   createSite,
   deleteSiteInBatches,
@@ -32,13 +39,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.1.0';
-import { UploadController } from './upload.js?v=1.1.0';
+} from './sites.js?v=1.2.0';
+import { UploadController } from './upload.js?v=1.2.0';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.1.0';
+} from './users.js?v=1.2.0';
 import {
   byId,
   closeDialog,
@@ -47,9 +54,9 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.1.0';
-import { debounce, formatBytes } from './utils.js?v=1.1.0';
-import { ViewerController } from './viewer.js?v=1.1.0';
+} from './ui.js?v=1.2.0';
+import { debounce, formatBytes } from './utils.js?v=1.2.0';
+import { ViewerController } from './viewer.js?v=1.2.0';
 
 let currentUser = null;
 let sitesCache = [];
@@ -60,6 +67,11 @@ let filterController;
 let galleryController;
 let uploadController;
 let viewerController;
+let sitePickerController;
+let siteFavoriteIds = {
+  [SITE_FAVORITE_CONTEXTS.ARCHIVE]: new Set(),
+  [SITE_FAVORITE_CONTEXTS.UPLOAD]: new Set(),
+};
 let userEditorOriginal = null;
 
 const reloadGallery = debounce((filters) => {
@@ -81,20 +93,47 @@ function activeSite() {
   return sitesCache.find((site) => site.id === siteId) ?? null;
 }
 
+function siteDisplayName(site) {
+  if (!site) return 'Seleziona un cantiere...';
+  return site.status === SITE_STATUSES.COMPLETED ? `${site.name} (concluso)` : site.name;
+}
+
+function orderedSites(context) {
+  return sortSitesByFavorites(sitesCache, siteFavoriteIds[context]);
+}
+
 function populateUploadSiteSelect(selectedId = filterController?.getValue().siteId) {
   const select = byId('upload-site-select');
   select.replaceChildren(new Option('Seleziona un cantiere...', ''));
-  for (const site of sitesCache) {
-    const suffix = site.status === SITE_STATUSES.COMPLETED ? ' (concluso)' : '';
-    select.add(new Option(`${site.name}${suffix}`, site.id));
+  for (const site of orderedSites(SITE_FAVORITE_CONTEXTS.UPLOAD)) {
+    select.add(new Option(siteDisplayName(site), site.id));
   }
   select.value = sitesCache.some((site) => site.id === selectedId) ? selectedId : '';
-  byId('upload-site-select').closest('.upload-site-field')?.classList.remove('is-missing');
+  byId('upload-site-picker-trigger').closest('.upload-site-field')?.classList.remove('is-missing');
+  updateSitePickerTriggers();
+}
+
+function updateSitePickerTrigger(triggerId, context, selectedId) {
+  const trigger = byId(triggerId);
+  const site = sitesCache.find((item) => item.id === selectedId) ?? null;
+  trigger.querySelector('.site-picker-trigger-label').textContent = siteDisplayName(site);
+  const favorite = Boolean(site && siteFavoriteIds[context].has(site.id));
+  trigger.classList.toggle('has-favorite', favorite);
+  trigger.setAttribute('aria-label', site
+    ? `${siteDisplayName(site)}. Apri elenco cantieri.`
+    : 'Seleziona un cantiere.');
+}
+
+function updateSitePickerTriggers() {
+  const selectedId = filterController?.getValue().siteId ?? '';
+  updateSitePickerTrigger('upload-site-picker-trigger', SITE_FAVORITE_CONTEXTS.UPLOAD, selectedId);
+  updateSitePickerTrigger('archive-site-picker-trigger', SITE_FAVORITE_CONTEXTS.ARCHIVE, selectedId);
 }
 
 function synchronizeUploadSite(siteId) {
   const select = byId('upload-site-select');
   if (select.value !== (siteId ?? '')) select.value = siteId ?? '';
+  updateSitePickerTriggers();
 }
 
 function handleFilterChange(filters) {
@@ -102,18 +141,55 @@ function handleFilterChange(filters) {
   reloadGallery(filters);
 }
 
+async function handleSiteFavoriteToggle(siteId, context) {
+  try {
+    const result = await toggleSiteFavorite(currentUser.id, context, siteId);
+    siteFavoriteIds[context] = new Set(result.ids);
+    const selectedId = filterController.getValue().siteId;
+    if (context === SITE_FAVORITE_CONTEXTS.ARCHIVE) {
+      filterController.setSites(orderedSites(context), selectedId);
+    } else {
+      populateUploadSiteSelect(selectedId);
+    }
+    updateSitePickerTriggers();
+    return result;
+  } catch (error) {
+    showToast(error?.message ?? 'Preferenza del cantiere non salvata.', { type: 'error' });
+    return null;
+  }
+}
+
+function openSitePicker(context) {
+  const isUpload = context === SITE_FAVORITE_CONTEXTS.UPLOAD;
+  sitePickerController.open({
+    title: isUpload ? 'Cantiere di destinazione' : 'Cantiere archivio',
+    context,
+    sites: orderedSites(context),
+    favoriteIds: siteFavoriteIds[context],
+    selectedId: filterController.getValue().siteId,
+    onSelect: (siteId) => {
+      if (isUpload) {
+        byId('upload-site-select').value = siteId;
+        filterController.setSite(siteId, { notify: false });
+        byId('upload-site-picker-trigger').closest('.upload-site-field')?.classList.remove('is-missing');
+        updateUploadHomeFeedback();
+        updateSitePickerTriggers();
+      } else {
+        filterController.setSite(siteId);
+      }
+    },
+    onToggleFavorite: handleSiteFavoriteToggle,
+  });
+}
+
 function updateUploadHomeFeedback(saved = []) {
   const feedback = byId('upload-home-feedback');
   if (!saved.length) {
+    feedback.hidden = true;
     feedback.classList.remove('is-success');
-    feedback.querySelector('strong').textContent = activeSite()
-      ? `Destinazione: ${activeSite().name}`
-      : 'Pronto per il caricamento';
-    feedback.querySelector('span').textContent = activeSite()
-      ? 'Scegli una delle tre modalità qui sopra.'
-      : 'Seleziona prima il cantiere di destinazione.';
     return;
   }
+  feedback.hidden = false;
   feedback.classList.add('is-success');
   feedback.querySelector('strong').textContent = saved.length === 1
     ? '1 elemento salvato'
@@ -123,13 +199,13 @@ function updateUploadHomeFeedback(saved = []) {
 
 function startHomeUpload(methodName) {
   if (!activeSite()) {
-    const field = byId('upload-site-select').closest('.upload-site-field');
+    const field = byId('upload-site-picker-trigger').closest('.upload-site-field');
     field?.classList.add('is-missing');
-    byId('upload-site-select').focus();
+    byId('upload-site-picker-trigger').focus();
     showToast('Seleziona prima il cantiere di destinazione.', { type: 'warning' });
     return;
   }
-  byId('upload-site-select').closest('.upload-site-field')?.classList.remove('is-missing');
+  byId('upload-site-picker-trigger').closest('.upload-site-field')?.classList.remove('is-missing');
   uploadController[methodName]();
 }
 
@@ -148,7 +224,6 @@ function initializeControllers() {
     sentinel: byId('gallery-sentinel'),
     gestureHint: byId('gallery-gesture-hint'),
     zoomIndicator: byId('gallery-zoom-indicator'),
-    getUser: () => currentUser,
     onOpen: (index) => viewerController.open(index),
     onSelectionChange: updateSelectionToolbar,
   });
@@ -159,7 +234,6 @@ function initializeControllers() {
     transform: byId('viewer-transform'),
     closeButton: byId('viewer-close'),
     shareButton: byId('viewer-share'),
-    favoriteButton: byId('viewer-favorite'),
     position: byId('viewer-position'),
     caption: byId('viewer-caption'),
     videoCenterButton: byId('viewer-video-center-toggle'),
@@ -170,13 +244,14 @@ function initializeControllers() {
     getItems: () => galleryController.getItems(),
     getHasMore: () => galleryController.hasMoreItems(),
     ensureIndex: (index) => galleryController.ensureIndex(index),
-    getUser: () => currentUser,
-    getViewMode: () => currentView,
-    onClose: ({ favoriteChanged }) => {
-      if (favoriteChanged && isFavoriteView(currentView)) {
-        galleryController.reload(filterController.getValue());
-      }
-    },
+    onClose: () => {},
+  });
+
+  sitePickerController = new SitePickerController({
+    dialog: byId('site-picker-dialog'),
+    title: byId('site-picker-title'),
+    list: byId('site-picker-list'),
+    closeButton: byId('site-picker-close'),
   });
 
   uploadController = new UploadController({
@@ -226,12 +301,8 @@ function bindStaticEvents() {
   byId('home-video-action').addEventListener('click', () => startHomeUpload('startVideoCapture'));
   byId('home-gallery-action').addEventListener('click', () => startHomeUpload('startGalleryImport'));
   byId('open-archive-button').addEventListener('click', () => setView(VIEW_MODES.ARCHIVE));
-  byId('upload-site-select').addEventListener('change', () => {
-    const siteId = byId('upload-site-select').value;
-    filterController.setSite(siteId, { notify: false });
-    byId('upload-site-select').closest('.upload-site-field')?.classList.remove('is-missing');
-    updateUploadHomeFeedback();
-  });
+  byId('upload-site-picker-trigger').addEventListener('click', () => openSitePicker(SITE_FAVORITE_CONTEXTS.UPLOAD));
+  byId('archive-site-picker-trigger').addEventListener('click', () => openSitePicker(SITE_FAVORITE_CONTEXTS.ARCHIVE));
 
   for (const button of document.querySelectorAll('[data-view]')) {
     button.addEventListener('click', () => setView(button.dataset.view));
@@ -379,13 +450,22 @@ function updateCurrentUserUi() {
 
 async function refreshMetadata() {
   const selectedSiteId = filterController?.getValue().siteId;
-  [usersCache, sitesCache] = await Promise.all([
+  const [users, sites, archiveFavorites, uploadFavorites] = await Promise.all([
     listUsers(),
     listSites(),
+    getSiteFavoriteIds(currentUser.id, SITE_FAVORITE_CONTEXTS.ARCHIVE),
+    getSiteFavoriteIds(currentUser.id, SITE_FAVORITE_CONTEXTS.UPLOAD),
   ]);
+  usersCache = users;
+  sitesCache = sites;
+  siteFavoriteIds = {
+    [SITE_FAVORITE_CONTEXTS.ARCHIVE]: new Set(archiveFavorites),
+    [SITE_FAVORITE_CONTEXTS.UPLOAD]: new Set(uploadFavorites),
+  };
   filterController.setUsers(usersCache);
-  filterController.setSites(sitesCache, selectedSiteId);
+  filterController.setSites(orderedSites(SITE_FAVORITE_CONTEXTS.ARCHIVE), selectedSiteId);
   populateUploadSiteSelect(filterController.getValue().siteId);
+  updateSitePickerTriggers();
   updateUploadHomeFeedback();
 }
 

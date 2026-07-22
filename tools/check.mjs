@@ -108,6 +108,30 @@ if (indexSource.includes('id="upload-fab"')) {
 if (!appSource.includes('let currentView = VIEW_MODES.UPLOAD')) {
   throw new Error('La prima vista operativa deve essere il caricamento.');
 }
+for (const removedLabel of [
+  'I miei upload',
+  'Preferiti archivio',
+  'Preferiti upload',
+  'OPERAZIONE PRINCIPALE',
+  'Seleziona il cantiere e scegli subito come acquisire il materiale.',
+  'Destinazione: Scegli una delle tre modalità qui sopra',
+]) {
+  if (indexSource.toLowerCase().includes(removedLabel.toLowerCase())) {
+    throw new Error(`Testo o sezione da rimuovere ancora presente: ${removedLabel}.`);
+  }
+}
+for (const requiredSitePickerId of [
+  'upload-site-picker-trigger',
+  'archive-site-picker-trigger',
+  'site-picker-dialog',
+]) {
+  if (!indexSource.includes(`id="${requiredSitePickerId}"`)) {
+    throw new Error(`Selettore cantieri preferiti mancante: ${requiredSitePickerId}.`);
+  }
+}
+if (!indexSource.includes('./images/logo-spini.png')) {
+  throw new Error('Logo Impresa Spini non collegato nell interfaccia.');
+}
 if (!indexSource.includes('id="gallery-gesture-hint"')
   || !indexSource.includes('id="gallery-zoom-indicator"')) {
   throw new Error('La galleria deve esporre guida e indicatore del pinch zoom.');
@@ -145,6 +169,7 @@ const required = [
   'CHANGELOG.md',
   'SECURITY.md',
   'VERIFICATION.md',
+  'images/logo-spini.png',
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',

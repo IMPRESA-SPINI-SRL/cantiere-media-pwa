@@ -265,15 +265,18 @@ try {
   await waitForCondition(cdp, "document.getElementById('site-filter').options.length === 2 && document.getElementById('upload-site-select').options.length === 2", 'new site in upload and archive selectors');
   await cdp.evaluate("document.getElementById('sites-close').click()");
 
-  await cdp.evaluate(`(() => {
-    const select = document.getElementById('upload-site-select');
-    select.value = select.options[1].value;
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-    return true;
-  })()`);
+  await cdp.evaluate("document.getElementById('upload-site-picker-trigger').click()");
+  await waitForCondition(cdp, "document.getElementById('site-picker-dialog').open", 'upload site picker');
+  await cdp.evaluate("document.querySelector('#site-picker-dialog .site-picker-star').click()");
   await waitForCondition(
     cdp,
-    "document.getElementById('site-filter').value === document.getElementById('upload-site-select').value",
+    "document.querySelector('#site-picker-dialog .site-picker-star')?.classList.contains('is-favorite')",
+    'upload site favorite',
+  );
+  await cdp.evaluate("document.querySelector('#site-picker-dialog .site-picker-site').click()");
+  await waitForCondition(
+    cdp,
+    "document.getElementById('site-filter').value === document.getElementById('upload-site-select').value && document.getElementById('upload-site-select').value !== ''",
     'synchronized upload destination',
   );
 
@@ -321,8 +324,6 @@ try {
   await cdp.evaluate("document.querySelector('.gallery-card').click()");
   await waitForCondition(cdp, "document.getElementById('viewer-dialog').open", 'viewer open');
   await waitForCondition(cdp, "document.querySelector('#viewer-transform img') !== null", 'viewer image');
-  await cdp.evaluate("document.getElementById('viewer-favorite').click()");
-  await waitForCondition(cdp, "document.getElementById('viewer-favorite').getAttribute('aria-pressed') === 'true'", 'favorite state');
   await cdp.evaluate("document.getElementById('viewer-close').click()");
   await waitForCondition(cdp, "!document.getElementById('viewer-dialog').open", 'viewer close');
 
@@ -397,19 +398,17 @@ try {
   await cdp.evaluate("document.querySelector('.confirm-dialog[open] [data-confirm-ok]').click()");
   await waitForCondition(cdp, "document.querySelectorAll('.gallery-card').length === 0", 'media deletion', 15000);
 
-  const cascadeCounts = await cdp.evaluate(`new Promise((resolveCounts, rejectCounts) => {
+  const remainingMedia = await cdp.evaluate(`new Promise((resolveCount, rejectCount) => {
     const request = indexedDB.open('cantiere-media-db');
-    request.onerror = () => rejectCounts(request.error);
+    request.onerror = () => rejectCount(request.error);
     request.onsuccess = () => {
-      const transaction = request.result.transaction(['media', 'favorites'], 'readonly');
+      const transaction = request.result.transaction('media', 'readonly');
       const media = transaction.objectStore('media').count();
-      const favorites = transaction.objectStore('favorites').count();
-      transaction.oncomplete = () => resolveCounts({ media: media.result, favorites: favorites.result });
-      transaction.onerror = () => rejectCounts(transaction.error);
+      media.onsuccess = () => resolveCount(media.result);
+      media.onerror = () => rejectCount(media.error);
     };
   })`);
-  assert(cascadeCounts.media === 0, 'Media metadata was not deleted.');
-  assert(cascadeCounts.favorites === 0, 'Favorite cascade deletion failed.');
+  assert(remainingMedia === 0, 'Media metadata was not deleted.');
 
   await cdp.evaluate(`(() => {
     document.getElementById('menu-button').click();

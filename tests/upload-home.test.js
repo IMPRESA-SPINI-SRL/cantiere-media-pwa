@@ -36,3 +36,26 @@ test('the archive exposes date grouping and a pinch hint', async () => {
   assert.match(gallery, /gesturechange/);
   assert.match(gallery, /calculatePinchColumns/);
 });
+
+
+test('le sezioni media personali sono rimosse e la schermata di caricamento non contiene istruzioni ridondanti', async () => {
+  const index = await readFile(resolve(root, 'index.html'), 'utf8');
+  for (const removedText of [
+    'I miei upload',
+    'Preferiti archivio',
+    'Preferiti upload',
+    'OPERAZIONE PRINCIPALE',
+    'Seleziona il cantiere e scegli subito come acquisire il materiale.',
+    'Destinazione: Scegli una delle tre modalità qui sopra',
+  ]) {
+    assert.doesNotMatch(index, new RegExp(removedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+  }
+});
+
+test('logo e selettori cantieri preferiti sono presenti nelle due viste', async () => {
+  const index = await readFile(resolve(root, 'index.html'), 'utf8');
+  assert.match(index, /images\/logo-spini\.png/);
+  assert.match(index, /id="upload-site-picker-trigger"/);
+  assert.match(index, /id="archive-site-picker-trigger"/);
+  assert.match(index, /id="site-picker-dialog"/);
+});

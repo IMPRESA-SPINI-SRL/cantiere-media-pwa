@@ -1,23 +1,27 @@
-# Verifica release 1.1.0
+# Verifica release 1.2.0
 
 Data: 2026-07-21.
 
 ## Controlli completati
 
-- `npm test`: 34 test superati su 34.
-- `npm run check`: 30 file JavaScript validi.
-- versione `1.1.0` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
-- asset PWA e tre icone verificati;
-- assenza del precedente pulsante flottante di upload verificata;
-- presenza della schermata upload-first e dei tre comandi diretti verificata;
-- raggruppamento per data e logica pinch da 2 a 6 colonne verificati con test automatici;
+- `npm test`: 44 test superati su 44.
+- `npm run check`: 32 file JavaScript validi.
+- versione `1.2.0` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
+- logo Impresa Spini, palette coordinata e nuove icone PWA inclusi nell'application shell;
+- asset PWA e tre icone verificate nelle dimensioni dichiarate;
+- assenza delle sezioni `I miei upload`, `Preferiti archivio` e `Preferiti upload` verificata;
+- assenza dei tre testi ridondanti della schermata di caricamento verificata;
+- presenza dei selettori cantieri con stella per Caricamento e Archivio verificata;
+- indipendenza dei contesti preferiti `upload` e `archive` verificata;
+- doppio tap reversibile, vincoli di trascinamento e snap esatto a `1x` verificati con test automatici;
+- raggruppamento per data e logica pinch della griglia da 2 a 6 colonne verificati;
 - divieto di scansione completa dello store `media` verificato staticamente.
 
-I test coprono autenticazione PIN, EXIF JPEG, permessi, query planner IndexedDB, condivisione mista, controlli video, date della galleria, densita della griglia, virtualizzazione e priorita del caricamento.
+I test coprono autenticazione PIN, EXIF JPEG, permessi, query planner IndexedDB, condivisione mista, controlli video, date della galleria, densita della griglia, virtualizzazione, priorita del caricamento, cantieri preferiti e trasformazioni del viewer.
 
 ## Browser smoke test incluso
 
-`npm run smoke` automatizza primo amministratore, creazione cantiere, upload diretto, apertura Archivio, intestazioni data, miniature, viewer, preferiti, cancellazione, Service Worker e riapertura offline.
+`npm run smoke` automatizza primo amministratore, creazione cantiere, upload diretto, apertura Archivio, intestazioni data, miniature, viewer, cancellazione, Service Worker e riapertura offline.
 
 Nel runner usato per preparare la release Chromium e soggetto alla policy aziendale `URLBlocklist: ["*"]` e blocca `127.0.0.1`. Il test e incluso ma il collaudo visuale deve essere eseguito in un browser non gestito:
 
@@ -31,20 +35,20 @@ npm run smoke
 CHROMIUM_PATH=/percorso/chromium npm run smoke
 ```
 
-## Collaudo specifico della release 1.1.0
+## Collaudo specifico della release 1.2.0
 
 Su Samsung/Android:
 
-1. aggiornare l'app e controllare `Versione 1.1.0` nel menu;
-2. verificare che dopo il login compaia subito la schermata `Carica foto e video`;
-3. controllare che cantiere, `Scatta foto`, `Registra video` e `Scegli dalla galleria` siano visibili senza aprire altri menu;
-4. eseguire almeno un caricamento con ciascuno dei tre comandi;
-5. aprire l'Archivio e verificare le intestazioni `Oggi`, `Ieri` o data estesa;
-6. appoggiare due dita sulla griglia e allargarle: le miniature devono diventare piu grandi e le colonne diminuire;
-7. avvicinare le dita: le miniature devono diventare piu piccole e le colonne aumentare;
-8. verificare che la griglia resti tra 2 e 6 colonne e che la densita scelta rimanga dopo la riapertura;
-9. controllare che il pinch non apra accidentalmente un media ne avvii la selezione;
-10. verificare pressione prolungata, condivisione ed eliminazione dopo il cambio densita.
+1. aggiornare l'app e controllare `Versione 1.2.0` nel menu;
+2. verificare logo, colori blu/rossi e nuova icona installata;
+3. aprire il selettore cantiere della schermata Carica e aggiungere due cantieri ai preferiti;
+4. controllare che i preferiti restino in alto dopo chiusura e riapertura;
+5. aprire l'Archivio e verificare che i preferiti del relativo selettore siano indipendenti da quelli del Caricamento;
+6. aprire una fotografia e usare il doppio tap per ingrandire, quindi un secondo doppio tap per tornare esattamente alla vista iniziale;
+7. ingrandire con pinch e trascinare con una e due dita fino ai limiti: la foto non deve staccarsi dai bordi utili;
+8. ridurre la foto vicino alla scala iniziale: deve ricentrarsi e tornare esattamente a `1x`;
+9. verificare che swipe tra media e controlli video continuino a funzionare;
+10. controllare che nel menu non compaiano le tre sezioni media personali rimosse.
 
 Su iPhone/iOS ripetere gli stessi punti, prestando particolare attenzione agli eventi gesture di Safari e ai file HEIC.
 
@@ -57,6 +61,6 @@ Su iPhone/iOS ripetere gli stessi punti, prestando particolare attenzione agli e
 5. permessi di eliminazione prima e dopo 24 ore;
 6. eliminazione di un cantiere con molti media e ripresa dopo chiusura forzata;
 7. comportamento vicino alla quota massima di storage;
-8. aggiornamento senza perdita di utenti, cantieri e media.
+8. aggiornamento senza perdita di utenti, cantieri, media e preferenze cantieri.
 
 La capacita effettiva deve essere misurata sui dispositivi scelti dall'impresa.

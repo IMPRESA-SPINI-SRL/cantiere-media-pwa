@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  constrainPhotoTransform,
   getVideoPlaybackButtonModel,
   getVideoTimelineModel,
   isViewerInteractiveTarget,
@@ -165,4 +166,89 @@ test('i controlli video statici vengono mostrati sopra il contenuto trasformato'
   assert.equal(controller.videoCenterButton.textContent, '▶');
   assert.equal(controller.videoControlButton.textContent, '▶');
   assert.equal(controller.videoTime.textContent, '0:00 / --:--');
+});
+
+
+test('il doppio tap su una foto gia ingrandita torna esattamente alla vista iniziale', () => {
+  const controller = Object.create(ViewerController.prototype);
+  controller.scale = 2.5;
+  controller.translateX = 120;
+  controller.translateY = -80;
+  controller.pointers = new Map();
+  controller.singleGesture = null;
+  controller.pinchGesture = null;
+  controller.pinchActive = false;
+  controller.lastTap = null;
+  controller.settleTimer = null;
+  controller.transform = {
+    style: {},
+    classList: {
+      add() {},
+      remove() {},
+    },
+  };
+
+  controller.toggleZoomAt(100, 100);
+  clearTimeout(controller.settleTimer);
+
+  assert.equal(controller.scale, 1);
+  assert.equal(controller.translateX, 0);
+  assert.equal(controller.translateY, 0);
+  assert.equal(controller.transform.style.transform, 'translate3d(0px, 0px, 0) scale(1)');
+});
+
+test('il trascinamento della foto viene bloccato ai bordi visibili', () => {
+  const constrained = constrainPhotoTransform({
+    scale: 2,
+    translateX: 900,
+    translateY: -900,
+    stageWidth: 400,
+    stageHeight: 800,
+    mediaWidth: 800,
+    mediaHeight: 1200,
+  });
+
+  assert.equal(constrained.scale, 2);
+  assert.equal(constrained.maxX, 200);
+  assert.equal(constrained.maxY, 200);
+  assert.equal(constrained.translateX, 200);
+  assert.equal(constrained.translateY, -200);
+});
+
+test('un pinch vicino alla scala iniziale scatta precisamente a 1x', () => {
+  const constrained = constrainPhotoTransform({
+    scale: 1.15,
+    translateX: 22,
+    translateY: -18,
+    stageWidth: 400,
+    stageHeight: 800,
+    mediaWidth: 800,
+    mediaHeight: 1200,
+    snapToInitial: true,
+  });
+
+  assert.deepEqual(constrained, {
+    scale: 1,
+    translateX: 0,
+    translateY: 0,
+    maxX: 0,
+    maxY: 0,
+  });
+});
+
+test('uno zoom intenzionale sopra la soglia non viene azzerato', () => {
+  const constrained = constrainPhotoTransform({
+    scale: 1.5,
+    translateX: 20,
+    translateY: 20,
+    stageWidth: 400,
+    stageHeight: 800,
+    mediaWidth: 800,
+    mediaHeight: 1200,
+    snapToInitial: true,
+  });
+
+  assert.equal(constrained.scale, 1.5);
+  assert.equal(constrained.translateX, 20);
+  assert.equal(constrained.translateY, 20);
 });

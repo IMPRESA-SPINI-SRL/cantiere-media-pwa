@@ -9,9 +9,13 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#eef1ef",
-  "theme_color": "#315c52",
-  "categories": ["business", "productivity", "photo"],
+  "background_color": "#f4f6fa",
+  "theme_color": "#1f4592",
+  "categories": [
+    "business",
+    "productivity",
+    "photo"
+  ],
   "icons": [
     {
       "src": "./icons/icon-192.png",

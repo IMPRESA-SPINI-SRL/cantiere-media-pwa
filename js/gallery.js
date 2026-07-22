@@ -1,8 +1,6 @@
-import { LIMITS, MEDIA_TYPES } from './config.js?v=1.1.0';
-import { queryMediaPage } from './db.js?v=1.1.0';
-import { favoriteContextForView, queryFavorites } from './favorites.js?v=1.1.0';
-import { isFavoriteView } from './filters.js?v=1.1.0';
-import { getOrCreateThumbnail, mediaDescription } from './media.js?v=1.1.0';
+import { LIMITS, MEDIA_TYPES } from './config.js?v=1.2.0';
+import { queryMediaPage } from './db.js?v=1.2.0';
+import { getOrCreateThumbnail, mediaDescription } from './media.js?v=1.2.0';
 
 const LONG_PRESS_MS = 480;
 const MOVE_TOLERANCE = 12;
@@ -281,14 +279,6 @@ export class GalleryController {
   }
 
   async queryPage(cursor) {
-    if (isFavoriteView(this.filters.viewMode)) {
-      const user = this.getUser();
-      return queryFavorites({
-        ...this.filters,
-        userId: user.id,
-        context: favoriteContextForView(this.filters.viewMode),
-      }, cursor, LIMITS.PAGE_SIZE);
-    }
     return queryMediaPage(this.filters, cursor, LIMITS.PAGE_SIZE);
   }
 
@@ -318,10 +308,7 @@ export class GalleryController {
       this.loadedOnce = true;
 
       if (!this.items.length) {
-        const message = isFavoriteView(this.filters.viewMode)
-          ? 'Nessun preferito per i filtri selezionati.'
-          : 'Nessun media per i filtri selezionati.';
-        this.setStatus(message);
+        this.setStatus('Nessun media per i filtri selezionati.');
         this.hideGestureHint();
       } else {
         this.hideStatus();
