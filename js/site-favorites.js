@@ -1,4 +1,5 @@
-import { getSetting, setSetting } from './db.js?v=1.2.0';
+import { getSetting, setSetting } from './db.js?v=1.3.0';
+import { SITE_STATUSES } from './config.js?v=1.3.0';
 
 export const SITE_FAVORITE_CONTEXTS = Object.freeze({
   ARCHIVE: 'archive',
@@ -22,6 +23,13 @@ function normalizeIds(value) {
   return [...new Set(value.filter((id) => typeof id === 'string' && id))];
 }
 
+function compareSiteNames(left, right) {
+  return String(left?.name ?? '').localeCompare(String(right?.name ?? ''), 'it-IT', {
+    sensitivity: 'base',
+    numeric: true,
+  });
+}
+
 export async function getSiteFavoriteIds(userId, context) {
   return normalizeIds(await getSetting(settingKey(userId, context), []));
 }
@@ -38,11 +46,27 @@ export async function toggleSiteFavorite(userId, context, siteId) {
   return { favorite, ids: value };
 }
 
-export function sortSitesByFavorites(sites, favoriteIds) {
+export function groupSitesForPicker(sites, favoriteIds) {
   const favorites = favoriteIds instanceof Set ? favoriteIds : new Set(favoriteIds ?? []);
-  return [...sites].sort((left, right) => {
-    const leftFavorite = favorites.has(left.id) ? 0 : 1;
-    const rightFavorite = favorites.has(right.id) ? 0 : 1;
-    return leftFavorite - rightFavorite;
-  });
+  const groups = {
+    favorites: [],
+    active: [],
+    completed: [],
+  };
+
+  for (const site of sites ?? []) {
+    if (favorites.has(site.id)) groups.favorites.push(site);
+    else if (site.status === SITE_STATUSES.COMPLETED) groups.completed.push(site);
+    else groups.active.push(site);
+  }
+
+  groups.favorites.sort(compareSiteNames);
+  groups.active.sort(compareSiteNames);
+  groups.completed.sort(compareSiteNames);
+  return groups;
+}
+
+export function sortSitesByFavorites(sites, favoriteIds) {
+  const groups = groupSitesForPicker(sites, favoriteIds);
+  return [...groups.favorites, ...groups.active, ...groups.completed];
 }

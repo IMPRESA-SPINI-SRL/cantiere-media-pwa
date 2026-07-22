@@ -1,7 +1,7 @@
 export const APP_NAME = 'Cantiere Media';
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
 export const DB_NAME = 'cantiere-media-db';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export const ROLES = Object.freeze({
   ADMIN: 'admin',
@@ -23,6 +23,8 @@ export const MEDIA_FILTERS = Object.freeze({
   VIDEO: 'video',
   BOTH: 'both',
 });
+
+export const ALL_SITES_ID = '__all_sites__';
 
 export const SITE_STATUSES = Object.freeze({
   ACTIVE: 'active',

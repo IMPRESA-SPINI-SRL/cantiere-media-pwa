@@ -1,13 +1,14 @@
 import {
+  ALL_SITES_ID,
   DB_NAME,
   DB_VERSION,
   LIMITS,
   MEDIA_FILTERS,
   SITE_STATUSES,
   STORE_NAMES,
-} from './config.js?v=1.2.0';
-import { canDeleteMedia } from './permissions.js?v=1.2.0';
-import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.2.0';
+} from './config.js?v=1.3.0';
+import { canDeleteMedia } from './permissions.js?v=1.3.0';
+import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.3.0';
 
 let databasePromise = null;
 
@@ -59,6 +60,10 @@ function configureSchema(database, transaction) {
   ensureIndex(media, 'siteTypeDate', ['siteId', 'mediaType', 'takenAt', 'id']);
   ensureIndex(media, 'siteAuthorDate', ['siteId', 'authorId', 'takenAt', 'id']);
   ensureIndex(media, 'siteTypeAuthorDate', ['siteId', 'mediaType', 'authorId', 'takenAt', 'id']);
+  ensureIndex(media, 'allDate', ['takenAt', 'id']);
+  ensureIndex(media, 'allTypeDate', ['mediaType', 'takenAt', 'id']);
+  ensureIndex(media, 'allAuthorDate', ['authorId', 'takenAt', 'id']);
+  ensureIndex(media, 'allTypeAuthorDate', ['mediaType', 'authorId', 'takenAt', 'id']);
 
   if (!database.objectStoreNames.contains(STORE_NAMES.MEDIA_BLOBS)) {
     database.createObjectStore(STORE_NAMES.MEDIA_BLOBS, { keyPath: 'mediaId' });
@@ -260,7 +265,32 @@ export async function putMediaWithBlob(metadata, blob) {
 export function chooseMediaQueryPlan(filters) {
   const hasType = filters.mediaType && filters.mediaType !== MEDIA_FILTERS.BOTH;
   const hasAuthor = filters.authorId && filters.authorId !== 'all';
+  const allSites = filters.siteId === ALL_SITES_ID;
 
+  if (allSites && hasType && hasAuthor) {
+    return {
+      indexName: 'allTypeAuthorDate',
+      prefix: [filters.mediaType, filters.authorId],
+    };
+  }
+  if (allSites && hasType) {
+    return {
+      indexName: 'allTypeDate',
+      prefix: [filters.mediaType],
+    };
+  }
+  if (allSites && hasAuthor) {
+    return {
+      indexName: 'allAuthorDate',
+      prefix: [filters.authorId],
+    };
+  }
+  if (allSites) {
+    return {
+      indexName: 'allDate',
+      prefix: [],
+    };
+  }
   if (hasType && hasAuthor) {
     return {
       indexName: 'siteTypeAuthorDate',

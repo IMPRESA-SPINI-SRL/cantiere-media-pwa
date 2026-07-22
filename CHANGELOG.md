@@ -3,6 +3,21 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
+## [1.3.0] - 2026-07-22
+
+### Aggiunto
+
+- Voce `Tutti i cantieri` in testa al selettore dell'Archivio.
+- Query cronologica indicizzata su tutti i cantieri, compatibile con filtri per tipo, autore e data.
+- Quattro indici IndexedDB globali dedicati per evitare scansioni complete dello store media.
+
+### Modificato
+
+- Ordinamento cantieri uniforme: prima tutti i preferiti in ordine alfabetico, poi gli attivi non preferiti in ordine alfabetico, infine i conclusi non preferiti in ordine alfabetico.
+- Preferiti attivi e conclusi riuniti in un unico gruppo alfabetico.
+- Palette grafica resa piu neutra: sfondi chiari, componenti grigio antracite, rosso aziendale per le azioni principali e blu limitato ai dettagli di selezione.
+- Schermata di caricamento alleggerita eliminando il grande fondale blu.
+
 ## [1.2.0] - 2026-07-21
 
 ### Aggiunto

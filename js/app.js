@@ -1,37 +1,38 @@
 import {
+  ALL_SITES_ID,
   APP_VERSION,
   MEDIA_TYPES,
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.2.0';
+} from './config.js?v=1.3.0';
 import {
   bootstrapAdministrator,
   login,
   logout,
   updateCurrentUserSnapshot,
-} from './auth.js?v=1.2.0';
+} from './auth.js?v=1.3.0';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.2.0';
-import { FilterController, viewModeLabel } from './filters.js?v=1.2.0';
-import { GalleryController } from './gallery.js?v=1.2.0';
+} from './db.js?v=1.3.0';
+import { FilterController, viewModeLabel } from './filters.js?v=1.3.0';
+import { GalleryController } from './gallery.js?v=1.3.0';
 import {
   getSiteFavoriteIds,
   SITE_FAVORITE_CONTEXTS,
   sortSitesByFavorites,
   toggleSiteFavorite,
-} from './site-favorites.js?v=1.2.0';
-import { SitePickerController } from './site-picker.js?v=1.2.0';
+} from './site-favorites.js?v=1.3.0';
+import { SitePickerController } from './site-picker.js?v=1.3.0';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
   partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.2.0';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.2.0';
+} from './media.js?v=1.3.0';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.3.0';
 import {
   createSite,
   deleteSiteInBatches,
@@ -39,13 +40,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.2.0';
-import { UploadController } from './upload.js?v=1.2.0';
+} from './sites.js?v=1.3.0';
+import { UploadController } from './upload.js?v=1.3.0';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.2.0';
+} from './users.js?v=1.3.0';
 import {
   byId,
   closeDialog,
@@ -54,9 +55,9 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.2.0';
-import { debounce, formatBytes } from './utils.js?v=1.2.0';
-import { ViewerController } from './viewer.js?v=1.2.0';
+} from './ui.js?v=1.3.0';
+import { debounce, formatBytes } from './utils.js?v=1.3.0';
+import { ViewerController } from './viewer.js?v=1.3.0';
 
 let currentUser = null;
 let sitesCache = [];
@@ -90,6 +91,7 @@ function submitButtonFor(event) {
 
 function activeSite() {
   const siteId = filterController.getValue().siteId;
+  if (siteId === ALL_SITES_ID) return null;
   return sitesCache.find((site) => site.id === siteId) ?? null;
 }
 
@@ -115,13 +117,16 @@ function populateUploadSiteSelect(selectedId = filterController?.getValue().site
 
 function updateSitePickerTrigger(triggerId, context, selectedId) {
   const trigger = byId(triggerId);
-  const site = sitesCache.find((item) => item.id === selectedId) ?? null;
-  trigger.querySelector('.site-picker-trigger-label').textContent = siteDisplayName(site);
+  const allSites = context === SITE_FAVORITE_CONTEXTS.ARCHIVE && selectedId === ALL_SITES_ID;
+  const site = allSites ? null : sitesCache.find((item) => item.id === selectedId) ?? null;
+  trigger.querySelector('.site-picker-trigger-label').textContent = allSites ? 'Tutti i cantieri' : siteDisplayName(site);
   const favorite = Boolean(site && siteFavoriteIds[context].has(site.id));
   trigger.classList.toggle('has-favorite', favorite);
-  trigger.setAttribute('aria-label', site
-    ? `${siteDisplayName(site)}. Apri elenco cantieri.`
-    : 'Seleziona un cantiere.');
+  trigger.setAttribute('aria-label', allSites
+    ? 'Tutti i cantieri. Apri elenco cantieri.'
+    : site
+      ? `${siteDisplayName(site)}. Apri elenco cantieri.`
+      : 'Seleziona un cantiere.');
 }
 
 function updateSitePickerTriggers() {
@@ -167,6 +172,7 @@ function openSitePicker(context) {
     sites: orderedSites(context),
     favoriteIds: siteFavoriteIds[context],
     selectedId: filterController.getValue().siteId,
+    allowAllSites: !isUpload,
     onSelect: (siteId) => {
       if (isUpload) {
         byId('upload-site-select').value = siteId;

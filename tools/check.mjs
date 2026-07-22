@@ -66,6 +66,9 @@ const databaseSource = await readFile(resolve(root, 'js/db.js'), 'utf8');
 const indexSource = await readFile(resolve(root, 'index.html'), 'utf8');
 const serviceWorkerSource = await readFile(resolve(root, 'service-worker.js'), 'utf8');
 const changelog = await readFile(resolve(root, 'CHANGELOG.md'), 'utf8');
+const gallerySource = await readFile(resolve(root, 'js/gallery.js'), 'utf8');
+const sitePickerSource = await readFile(resolve(root, 'js/site-picker.js'), 'utf8');
+const styleSource = await readFile(resolve(root, 'css/style.css'), 'utf8');
 const version = packageJson.version;
 
 if (!configSource.includes(`APP_VERSION = '${version}'`)) {
@@ -132,11 +135,21 @@ for (const requiredSitePickerId of [
 if (!indexSource.includes('./images/logo-spini.png')) {
   throw new Error('Logo Impresa Spini non collegato nell interfaccia.');
 }
+if (!sitePickerSource.includes('Tutti i cantieri') || !sitePickerSource.includes('Cantieri attivi') || !sitePickerSource.includes('Cantieri conclusi')) {
+  throw new Error('Il selettore deve mostrare tutti i cantieri e i gruppi ordinati richiesti.');
+}
+for (const globalIndex of ['allDate', 'allTypeDate', 'allAuthorDate', 'allTypeAuthorDate']) {
+  if (!databaseSource.includes(`'${globalIndex}'`)) {
+    throw new Error(`Indice globale mancante per Tutti i cantieri: ${globalIndex}.`);
+  }
+}
+if (!styleSource.includes('--background: #f5f4f1') || !styleSource.includes('--accent: #c92832')) {
+  throw new Error('Palette neutra con accento aziendale non applicata.');
+}
 if (!indexSource.includes('id="gallery-gesture-hint"')
   || !indexSource.includes('id="gallery-zoom-indicator"')) {
   throw new Error('La galleria deve esporre guida e indicatore del pinch zoom.');
 }
-const gallerySource = await readFile(resolve(root, 'js/gallery.js'), 'utf8');
 for (const requiredGalleryFeature of [
   'buildGalleryLayoutRows',
   'formatGalleryDateLabel',

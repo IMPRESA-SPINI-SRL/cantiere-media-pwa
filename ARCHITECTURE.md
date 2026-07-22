@@ -68,7 +68,7 @@ Chiave: `mediaId`. La miniatura viene generata quando la card entra vicino al vi
 
 ### `favorites`
 
-Store storico dei preferiti media, mantenuto nello schema per compatibilita e per la cancellazione a cascata di eventuali record creati da versioni precedenti. La release 1.2.0 non espone piu viste o comandi per i preferiti media.
+Store storico dei preferiti media, mantenuto nello schema per compatibilita e per la cancellazione a cascata di eventuali record creati da versioni precedenti. La release 1.3.0 non espone piu viste o comandi per i preferiti media.
 
 ### `settings`
 
@@ -179,3 +179,8 @@ npm test
 npm run check
 npm run smoke
 ```
+
+
+## Archivio trasversale a tutti i cantieri
+
+La selezione `Tutti i cantieri` non esegue scansioni complete. La versione 1.3.0 introduce gli indici globali `allDate`, `allTypeDate`, `allAuthorDate` e `allTypeAuthorDate`, scelti dal query planner in base ai filtri attivi.

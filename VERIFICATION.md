@@ -1,12 +1,12 @@
-# Verifica release 1.2.0
+# Verifica release 1.3.0
 
-Data: 2026-07-21.
+Data: 2026-07-22.
 
 ## Controlli completati
 
-- `npm test`: 44 test superati su 44.
+- `npm test`: 46 test superati su 46.
 - `npm run check`: 32 file JavaScript validi.
-- versione `1.2.0` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
+- versione `1.3.0` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
 - logo Impresa Spini, palette coordinata e nuove icone PWA inclusi nell'application shell;
 - asset PWA e tre icone verificate nelle dimensioni dichiarate;
 - assenza delle sezioni `I miei upload`, `Preferiti archivio` e `Preferiti upload` verificata;
@@ -16,6 +16,11 @@ Data: 2026-07-21.
 - doppio tap reversibile, vincoli di trascinamento e snap esatto a `1x` verificati con test automatici;
 - raggruppamento per data e logica pinch della griglia da 2 a 6 colonne verificati;
 - divieto di scansione completa dello store `media` verificato staticamente.
+- ordine cantieri verificato: preferiti alfabetici, attivi non preferiti alfabetici, conclusi non preferiti alfabetici;
+- selezione `Tutti i cantieri` disponibile soltanto nell'Archivio;
+- query `Tutti i cantieri` servita da quattro indici globali IndexedDB, senza scansione completa;
+- palette neutra con rosso aziendale e uso ridotto del blu verificata staticamente;
+
 
 I test coprono autenticazione PIN, EXIF JPEG, permessi, query planner IndexedDB, condivisione mista, controlli video, date della galleria, densita della griglia, virtualizzazione, priorita del caricamento, cantieri preferiti e trasformazioni del viewer.
 
@@ -35,15 +40,15 @@ npm run smoke
 CHROMIUM_PATH=/percorso/chromium npm run smoke
 ```
 
-## Collaudo specifico della release 1.2.0
+## Collaudo specifico della release 1.3.0
 
 Su Samsung/Android:
 
-1. aggiornare l'app e controllare `Versione 1.2.0` nel menu;
-2. verificare logo, colori blu/rossi e nuova icona installata;
-3. aprire il selettore cantiere della schermata Carica e aggiungere due cantieri ai preferiti;
-4. controllare che i preferiti restino in alto dopo chiusura e riapertura;
-5. aprire l'Archivio e verificare che i preferiti del relativo selettore siano indipendenti da quelli del Caricamento;
+1. aggiornare l'app e controllare `Versione 1.3.0` nel menu;
+2. verificare logo, sfondi neutri, azioni rosse e uso limitato del blu;
+3. aprire il selettore della schermata Carica e verificare l'ordine: preferiti alfabetici, attivi alfabetici, conclusi alfabetici;
+4. aprire l'Archivio e verificare che i preferiti del relativo selettore siano indipendenti da quelli del Caricamento;
+5. selezionare `Tutti i cantieri` e verificare che la galleria mostri media provenienti da cantieri diversi rispettando tipo, autore e data;
 6. aprire una fotografia e usare il doppio tap per ingrandire, quindi un secondo doppio tap per tornare esattamente alla vista iniziale;
 7. ingrandire con pinch e trascinare con una e due dita fino ai limiti: la foto non deve staccarsi dai bordi utili;
 8. ridurre la foto vicino alla scala iniziale: deve ricentrarsi e tornare esattamente a `1x`;

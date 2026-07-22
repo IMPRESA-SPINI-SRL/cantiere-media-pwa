@@ -4,22 +4,41 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { SITE_STATUSES } from '../js/config.js';
 import {
+  groupSitesForPicker,
   SITE_FAVORITE_CONTEXTS,
   sortSitesByFavorites,
 } from '../js/site-favorites.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-test('i cantieri preferiti sono ordinati prima degli altri senza perdere l ordine originale', () => {
-  const sites = [
-    { id: 'a', name: 'A' },
-    { id: 'b', name: 'B' },
-    { id: 'c', name: 'C' },
-    { id: 'd', name: 'D' },
-  ];
-  const sorted = sortSitesByFavorites(sites, new Set(['c', 'a']));
-  assert.deepEqual(sorted.map((site) => site.id), ['a', 'c', 'b', 'd']);
+const sites = [
+  { id: 'z-active', name: 'Zeta', status: SITE_STATUSES.ACTIVE },
+  { id: 'a-completed', name: 'Alfa', status: SITE_STATUSES.COMPLETED },
+  { id: 'm-active', name: 'Muro', status: SITE_STATUSES.ACTIVE },
+  { id: 'b-completed', name: 'Beta', status: SITE_STATUSES.COMPLETED },
+  { id: 'c-active', name: 'Casa 2', status: SITE_STATUSES.ACTIVE },
+  { id: 'c10-active', name: 'Casa 10', status: SITE_STATUSES.ACTIVE },
+];
+
+test('ordine richiesto: preferiti alfabetici, attivi alfabetici, conclusi alfabetici', () => {
+  const sorted = sortSitesByFavorites(sites, new Set(['z-active', 'a-completed']));
+  assert.deepEqual(sorted.map((site) => site.id), [
+    'a-completed',
+    'z-active',
+    'c-active',
+    'c10-active',
+    'm-active',
+    'b-completed',
+  ]);
+});
+
+test('i preferiti attivi e conclusi sono mescolati in un unico gruppo alfabetico', () => {
+  const groups = groupSitesForPicker(sites, new Set(['z-active', 'a-completed', 'b-completed']));
+  assert.deepEqual(groups.favorites.map((site) => site.name), ['Alfa', 'Beta', 'Zeta']);
+  assert.deepEqual(groups.active.map((site) => site.name), ['Casa 2', 'Casa 10', 'Muro']);
+  assert.deepEqual(groups.completed, []);
 });
 
 test('archivio e caricamento usano contesti preferiti indipendenti', () => {
@@ -33,10 +52,12 @@ test('la chiave persistente include sia utente sia contesto', async () => {
   assert.match(source, /site-favorites::\$\{userId\}::\$\{context\}/);
 });
 
-test('il selettore mostra una stella per ogni cantiere', async () => {
+test('il selettore mostra stelle e gruppi separati', async () => {
   const source = await readFile(resolve(root, 'js/site-picker.js'), 'utf8');
   assert.match(source, /site-picker-star/);
   assert.match(source, /aria-pressed/);
   assert.match(source, /Preferiti/);
-  assert.match(source, /Altri cantieri/);
+  assert.match(source, /Cantieri attivi/);
+  assert.match(source, /Cantieri conclusi/);
+  assert.match(source, /Tutti i cantieri/);
 });

@@ -1,5 +1,6 @@
-import { SITE_STATUSES } from './config.js?v=1.2.0';
-import { closeDialog, openDialog } from './ui.js?v=1.2.0';
+import { ALL_SITES_ID, SITE_STATUSES } from './config.js?v=1.3.0';
+import { groupSitesForPicker } from './site-favorites.js?v=1.3.0';
+import { closeDialog, openDialog } from './ui.js?v=1.3.0';
 
 function createStarIcon() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -24,6 +25,7 @@ export class SitePickerController {
     this.sites = [];
     this.favoriteIds = new Set();
     this.selectedId = '';
+    this.allowAllSites = false;
     this.onSelect = null;
     this.onToggleFavorite = null;
 
@@ -34,12 +36,22 @@ export class SitePickerController {
     });
   }
 
-  open({ title, context, sites, favoriteIds, selectedId, onSelect, onToggleFavorite }) {
+  open({
+    title,
+    context,
+    sites,
+    favoriteIds,
+    selectedId,
+    allowAllSites = false,
+    onSelect,
+    onToggleFavorite,
+  }) {
     this.title.textContent = title;
     this.context = context;
     this.sites = [...sites];
     this.favoriteIds = new Set(favoriteIds ?? []);
     this.selectedId = selectedId ?? '';
+    this.allowAllSites = allowAllSites;
     this.onSelect = onSelect;
     this.onToggleFavorite = onToggleFavorite;
     this.render();
@@ -49,11 +61,12 @@ export class SitePickerController {
   render() {
     this.list.replaceChildren();
     this.list.append(this.createClearRow());
+    if (this.allowAllSites) this.list.append(this.createAllSitesRow());
 
-    const favorites = this.sites.filter((site) => this.favoriteIds.has(site.id));
-    const others = this.sites.filter((site) => !this.favoriteIds.has(site.id));
-    if (favorites.length) this.appendGroup('Preferiti', favorites);
-    if (others.length) this.appendGroup(favorites.length ? 'Altri cantieri' : 'Cantieri', others);
+    const groups = groupSitesForPicker(this.sites, this.favoriteIds);
+    if (groups.favorites.length) this.appendGroup('Preferiti', groups.favorites);
+    if (groups.active.length) this.appendGroup('Cantieri attivi', groups.active);
+    if (groups.completed.length) this.appendGroup('Cantieri conclusi', groups.completed);
 
     if (!this.sites.length) {
       const empty = document.createElement('p');
@@ -69,6 +82,17 @@ export class SitePickerController {
     button.className = `site-picker-clear${this.selectedId ? '' : ' is-selected'}`;
     button.textContent = 'Seleziona un cantiere...';
     button.addEventListener('click', () => this.selectSite(''));
+    return button;
+  }
+
+  createAllSitesRow() {
+    const button = document.createElement('button');
+    button.type = 'button';
+    const selected = this.selectedId === ALL_SITES_ID;
+    button.className = `site-picker-all${selected ? ' is-selected' : ''}`;
+    button.setAttribute('aria-pressed', String(selected));
+    button.innerHTML = `<span class="site-picker-all-check" aria-hidden="true">${selected ? '✓' : ''}</span><span>Tutti i cantieri</span>`;
+    button.addEventListener('click', () => this.selectSite(ALL_SITES_ID));
     return button;
   }
 

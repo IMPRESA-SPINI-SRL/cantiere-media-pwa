@@ -1,4 +1,4 @@
-import { MEDIA_FILTERS, SITE_STATUSES, VIEW_MODES } from './config.js?v=1.2.0';
+import { ALL_SITES_ID, MEDIA_FILTERS, SITE_STATUSES, VIEW_MODES } from './config.js?v=1.3.0';
 
 export function viewModeLabel(viewMode) {
   return viewMode === VIEW_MODES.ARCHIVE ? 'Archivio' : 'Carica';
@@ -20,12 +20,16 @@ export class FilterController {
   }
 
   setSites(sites, selectedId = this.siteSelect.value) {
-    this.siteSelect.replaceChildren(new Option('Seleziona un cantiere...', ''));
+    this.siteSelect.replaceChildren(
+      new Option('Seleziona un cantiere...', ''),
+      new Option('Tutti i cantieri', ALL_SITES_ID),
+    );
     for (const site of sites) {
       const suffix = site.status === SITE_STATUSES.COMPLETED ? ' (concluso)' : '';
       this.siteSelect.add(new Option(`${site.name}${suffix}`, site.id));
     }
-    this.siteSelect.value = sites.some((site) => site.id === selectedId) ? selectedId : '';
+    const valid = selectedId === ALL_SITES_ID || sites.some((site) => site.id === selectedId);
+    this.siteSelect.value = valid ? selectedId : '';
   }
 
   setUsers(users, selectedId = this.authorSelect.value || 'all') {
