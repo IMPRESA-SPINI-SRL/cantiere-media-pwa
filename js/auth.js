@@ -1,17 +1,17 @@
-import { LIMITS, ROLES, STORE_NAMES } from './config.js?v=1.4.3';
+import { LIMITS, ROLES, STORE_NAMES } from './config.js?v=1.5.0';
 import {
   deleteSetting,
   getRecord,
   getSetting,
   putInitialUser,
   setSetting,
-} from './db.js?v=1.4.3';
+} from './db.js?v=1.5.0';
 import {
   base64ToBytes,
   bytesToBase64,
   createId,
   normalizeText,
-} from './utils.js?v=1.4.3';
+} from './utils.js?v=1.5.0';
 
 let currentUser = null;
 const SESSION_SETTING_KEY = 'auth-session';

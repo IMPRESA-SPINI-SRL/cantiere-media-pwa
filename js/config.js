@@ -1,5 +1,6 @@
 export const APP_NAME = 'Cantiere Media';
-export const APP_VERSION = '1.4.3';
+export const APP_VERSION = '1.5.0';
+export const API_BASE_URL = 'https://func-cantiere-media-spini-prod-cbaudcavfabuemex.italynorth-01.azurewebsites.net';
 export const DB_NAME = 'cantiere-media-db';
 export const DB_VERSION = 4;
 
@@ -36,12 +37,12 @@ export const LIMITS = Object.freeze({
   PAGE_SIZE: 60,
   THUMBNAIL_SIZE: 420,
   THUMBNAIL_CONCURRENCY: 2,
-  VIDEO_MAX_SECONDS: 60,
-  VIDEO_MAX_BYTES: 100 * 1024 * 1024,
+  VIDEO_MAX_SECONDS: 180,
+  VIDEO_MAX_BYTES: 500 * 1024 * 1024,
   DELETE_WINDOW_MS: 24 * 60 * 60 * 1000,
   SITE_DELETE_BATCH_SIZE: 100,
-  PIN_MIN_LENGTH: 4,
-  PIN_MAX_LENGTH: 8,
+  PIN_MIN_LENGTH: 6,
+  PIN_MAX_LENGTH: 6,
   PIN_PBKDF2_ITERATIONS: 160000,
   AUTH_MAX_FAILURES: 5,
   AUTH_LOCK_MS: 30 * 1000,

@@ -1,4 +1,4 @@
-import { LIMITS, MEDIA_TYPES, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.4.3';
+import { LIMITS, MEDIA_TYPES, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.5.0';
 import {
   deleteMediaAuthorizedBatch,
   getMediaBlob,
@@ -9,9 +9,9 @@ import {
   putMediaWithBlob,
   putThumbnailBlob,
   setMediaContentHash,
-} from './db.js?v=1.4.3';
-import { readExifDate } from './exif.js?v=1.4.3';
-import { sha256Blob } from './file-hash.js?v=1.4.3';
+} from './db.js?v=1.5.0';
+import { readExifDate } from './exif.js?v=1.5.0';
+import { sha256Blob } from './file-hash.js?v=1.5.0';
 import {
   createId,
   fileExtension,
@@ -19,7 +19,7 @@ import {
   formatDateTime,
   formatDuration,
   isQuotaError,
-} from './utils.js?v=1.4.3';
+} from './utils.js?v=1.5.0';
 
 const thumbnailJobs = new Map();
 const thumbnailQueue = [];

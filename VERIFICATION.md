@@ -1,4 +1,4 @@
-# Verifica release 1.4.3
+# Verifica release 1.5.0
 
 Data: 2026-07-22.
 
@@ -6,7 +6,7 @@ Data: 2026-07-22.
 
 - `npm test`: 55 test superati su 55.
 - `npm run check`: 36 file JavaScript validi.
-- versione `1.4.3` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
+- versione `1.5.0` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
 - logo Impresa Spini, palette coordinata e nuove icone PWA inclusi nell'application shell;
 - asset PWA e tre icone verificate nelle dimensioni dichiarate;
 - assenza delle sezioni `I miei upload`, `Preferiti archivio` e `Preferiti upload` verificata;
@@ -49,7 +49,7 @@ npm run smoke
 CHROMIUM_PATH=/percorso/chromium npm run smoke
 ```
 
-## Collaudo specifico della release 1.4.3
+## Collaudo specifico della release 1.5.0
 
 Su PC:
 
@@ -61,7 +61,7 @@ Su PC:
 
 Su Samsung/Android:
 
-1. aggiornare l'app e controllare `Versione 1.4.3` nel menu;
+1. aggiornare l'app e controllare `Versione 1.5.0` nel menu;
 2. verificare che le tre intestazioni dei gruppi siano ben leggibili e non si confondano con i nomi dei cantieri;
 3. aprire il selettore della schermata Carica e verificare l'ordine: preferiti alfabetici, attivi alfabetici, conclusi alfabetici;
 4. aprire l'Archivio e verificare che i preferiti del relativo selettore siano indipendenti da quelli del Caricamento;

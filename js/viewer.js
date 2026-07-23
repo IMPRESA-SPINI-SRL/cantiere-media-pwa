@@ -1,7 +1,7 @@
-import { MEDIA_TYPES } from './config.js?v=1.4.3';
-import { downloadMedia, getMediaFile, shareMediaItems } from './media.js?v=1.4.3';
-import { clamp, formatBytes, formatDateTime, formatDuration } from './utils.js?v=1.4.3';
-import { closeDialog, openDialog, showToast } from './ui.js?v=1.4.3';
+import { MEDIA_TYPES } from './config.js?v=1.5.0';
+import { downloadMedia, getMediaFile, shareMediaItems } from './media.js?v=1.5.0';
+import { clamp, formatBytes, formatDateTime, formatDuration } from './utils.js?v=1.5.0';
+import { closeDialog, openDialog, showToast } from './ui.js?v=1.5.0';
 
 const INTERACTIVE_TARGET_SELECTOR = 'button, video, input, select, textarea, a[href], [role="button"]';
 const PLAY_SYMBOL = '▶';

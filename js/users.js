@@ -1,12 +1,12 @@
-import { ROLES, STORE_NAMES } from './config.js?v=1.4.3';
+import { ROLES, STORE_NAMES } from './config.js?v=1.5.0';
 import {
   clearLoginThrottle,
   createPinCredentials,
   toPublicUser,
-} from './auth.js?v=1.4.3';
-import { getAllByIndex, getAllRecords, getRecord, putRecord } from './db.js?v=1.4.3';
-import { canManageUsers } from './permissions.js?v=1.4.3';
-import { createId, normalizeText } from './utils.js?v=1.4.3';
+} from './auth.js?v=1.5.0';
+import { getAllByIndex, getAllRecords, getRecord, putRecord } from './db.js?v=1.5.0';
+import { canManageUsers } from './permissions.js?v=1.5.0';
+import { createId, normalizeText } from './utils.js?v=1.5.0';
 
 async function requireAdministrator(actor) {
   const storedActor = actor?.id

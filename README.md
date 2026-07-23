@@ -1,6 +1,6 @@
 # Cantiere Media PWA
 
-Versione 1.4.3.
+Versione 1.5.0.
 
 Le intestazioni dei gruppi cantieri nei selettori sono evidenziate con la palette rossa aziendale per una lettura piu immediata.
 
@@ -105,7 +105,7 @@ Su PC il selettore cantieri si apre centrato nello schermo, con altezza limitata
 - `media`: soli metadati indicizzati.
 - `mediaBlobs`: file originali.
 - `thumbnails`: miniature generate su richiesta.
-- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.4.3.
+- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.5.0.
 - `settings`: impostazioni tecniche, controllo tentativi PIN e cantieri preferiti per utente e contesto.
 
 Le query dell'Archivio usano indici composti e cursori discendenti. Non viene eseguito un caricamento completo dei media per poi filtrarli.

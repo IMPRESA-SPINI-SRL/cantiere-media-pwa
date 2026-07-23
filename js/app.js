@@ -5,35 +5,38 @@ import {
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.4.3';
+} from './config.js?v=1.5.0';
+import { updateCurrentUserSnapshot } from './auth.js?v=1.5.0';
 import {
-  bootstrapAdministrator,
-  login,
-  logout,
-  restoreSession,
-  updateCurrentUserSnapshot,
-} from './auth.js?v=1.4.3';
+  activateCentralUser,
+  getLastUsername,
+  listCentralUsers,
+  loginCentralUser,
+  logoutCentralUser,
+  restoreCentralSession,
+  verifyCentralSession,
+} from './remote-auth.js?v=1.5.0';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.4.3';
-import { FilterController, viewModeLabel } from './filters.js?v=1.4.3';
-import { GalleryController } from './gallery.js?v=1.4.3';
+} from './db.js?v=1.5.0';
+import { FilterController, viewModeLabel } from './filters.js?v=1.5.0';
+import { GalleryController } from './gallery.js?v=1.5.0';
 import {
   getSiteFavoriteIds,
   SITE_FAVORITE_CONTEXTS,
   sortSitesByFavorites,
   toggleSiteFavorite,
-} from './site-favorites.js?v=1.4.3';
-import { SitePickerController } from './site-picker.js?v=1.4.3';
+} from './site-favorites.js?v=1.5.0';
+import { SitePickerController } from './site-picker.js?v=1.5.0';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
   partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.4.3';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.4.3';
+} from './media.js?v=1.5.0';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.5.0';
 import {
   createSite,
   deleteSiteInBatches,
@@ -41,13 +44,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.4.3';
-import { UploadController } from './upload.js?v=1.4.3';
+} from './sites.js?v=1.5.0';
+import { UploadController } from './upload.js?v=1.5.0';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.4.3';
+} from './users.js?v=1.5.0';
 import {
   byId,
   closeDialog,
@@ -56,9 +59,9 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.4.3';
-import { debounce, formatBytes } from './utils.js?v=1.4.3';
-import { ViewerController } from './viewer.js?v=1.4.3';
+} from './ui.js?v=1.5.0';
+import { debounce, formatBytes } from './utils.js?v=1.5.0';
+import { ViewerController } from './viewer.js?v=1.5.0';
 
 let currentUser = null;
 let sitesCache = [];
@@ -75,6 +78,8 @@ let siteFavoriteIds = {
   [SITE_FAVORITE_CONTEXTS.UPLOAD]: new Set(),
 };
 let userEditorOriginal = null;
+let centralUsersCache = [];
+let sessionRevalidationRunning = false;
 
 const reloadGallery = debounce((filters) => {
   if (currentUser && currentView !== VIEW_MODES.UPLOAD) galleryController.reload(filters);
@@ -289,8 +294,10 @@ function initializeControllers() {
 }
 
 function bindStaticEvents() {
-  byId('setup-form').addEventListener('submit', handleSetup);
+  byId('activation-form').addEventListener('submit', handleActivation);
   byId('login-form').addEventListener('submit', handleLogin);
+  byId('login-user').addEventListener('change', updateAuthMode);
+  byId('auth-refresh-users').addEventListener('click', refreshCentralUsers);
   byId('menu-button').addEventListener('click', openMenu);
   byId('menu-close').addEventListener('click', () => closeDialog(byId('menu-dialog')));
   byId('menu-dialog').addEventListener('cancel', (event) => {
@@ -327,7 +334,7 @@ function bindStaticEvents() {
   byId('user-editor-cancel').addEventListener('click', closeUserEditor);
   byId('user-editor-form').addEventListener('submit', saveUserEditor);
 
-  window.addEventListener('online', updateConnectionStatus);
+  window.addEventListener('online', handleOnlineConnection);
   window.addEventListener('offline', updateConnectionStatus);
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
@@ -357,66 +364,119 @@ async function start() {
 
   try {
     await openDatabase();
-    const users = await listUsers();
-    if (!users.length) {
-      showSetupScreen();
-    } else {
-      const sessionUser = await restoreSession();
-      if (sessionUser) await enterApplication(sessionUser);
-      else await showLoginScreen(users);
-    }
+    const sessionUser = await restoreCentralSession();
+    if (sessionUser) await enterApplication(sessionUser);
+    else await showCentralAuthScreen();
   } catch (error) {
-    showAuthError(error?.message ?? 'Impossibile avviare l\'applicazione.');
+    await showCentralAuthScreen({ initialError: error?.message });
   }
 }
 
-function showSetupScreen() {
-  byId('setup-form').hidden = false;
+function selectedCentralUser() {
+  const username = byId('login-user').value;
+  return centralUsersCache.find((user) => user.username === username) ?? null;
+}
+
+function updateAuthMode() {
+  const user = selectedCentralUser();
+  const activationForm = byId('activation-form');
+  const loginForm = byId('login-form');
+  const status = byId('auth-user-status');
+
+  activationForm.hidden = true;
+  loginForm.hidden = true;
+  status.textContent = '';
+
+  if (!user) return;
+
+  const pending = user.status === 'pending-activation' || user.pinConfigured !== true;
+  if (pending) {
+    activationForm.hidden = false;
+    status.textContent = 'Prima attivazione richiesta.';
+    setTimeout(() => byId('activation-code').focus(), 0);
+  } else {
+    loginForm.hidden = false;
+    status.textContent = 'Utente già attivato.';
+    setTimeout(() => byId('login-pin').focus(), 0);
+  }
+}
+
+async function showCentralAuthScreen({ initialError = '', forceNetwork = false } = {}) {
+  byId('app-screen').hidden = true;
+  byId('auth-screen').hidden = false;
+  byId('activation-form').hidden = true;
   byId('login-form').hidden = true;
-  byId('app-screen').hidden = true;
-  byId('auth-screen').hidden = false;
-  setTimeout(() => byId('setup-name').focus(), 0);
+  showAuthError(initialError);
+
+  const networkStatus = byId('auth-network-status');
+  networkStatus.textContent = navigator.onLine
+    ? 'Collegamento al servizio aziendale...'
+    : 'Offline: per il primo accesso serve una connessione internet.';
+
+  try {
+    const result = await listCentralUsers({ allowCache: !forceNetwork });
+    centralUsersCache = result.users;
+    const select = byId('login-user');
+    select.replaceChildren();
+
+    for (const user of centralUsersCache) {
+      select.add(new Option(user.displayName, user.username));
+    }
+
+    const lastUsername = getLastUsername();
+    if (centralUsersCache.some((user) => user.username === lastUsername)) {
+      select.value = lastUsername;
+    }
+
+    networkStatus.textContent = result.source === 'network'
+      ? 'Servizio aziendale collegato.'
+      : 'Elenco utenti disponibile offline. Per accedere senza una sessione salvata serve internet.';
+
+    if (!centralUsersCache.length) {
+      showAuthError('Nessun utente disponibile. Controlla la connessione e aggiorna l’elenco.');
+      return;
+    }
+
+    byId('activation-code').value = '';
+    byId('activation-pin').value = '';
+    byId('activation-pin-confirm').value = '';
+    byId('login-pin').value = '';
+    updateAuthMode();
+  } catch (error) {
+    centralUsersCache = [];
+    byId('login-user').replaceChildren();
+    networkStatus.textContent = 'Servizio aziendale non raggiungibile.';
+    showAuthError(error?.message ?? 'Impossibile caricare l’elenco utenti.');
+  }
 }
 
-async function showLoginScreen(users = null) {
-  const availableUsers = (users ?? await listUsers({ activeOnly: true }))
-    .filter((user) => user.active !== false);
-  const select = byId('login-user');
-  select.replaceChildren();
-  for (const user of availableUsers) select.add(new Option(user.name, user.id));
-  const lastUserId = localStorage.getItem('last-user-id');
-  if (availableUsers.some((user) => user.id === lastUserId)) select.value = lastUserId;
-  byId('login-pin').value = '';
-  byId('setup-form').hidden = true;
-  byId('login-form').hidden = false;
-  byId('app-screen').hidden = true;
-  byId('auth-screen').hidden = false;
-  showAuthError('');
-  setTimeout(() => byId('login-pin').focus(), 0);
-}
-
-async function handleSetup(event) {
+async function handleActivation(event) {
   event.preventDefault();
   showAuthError('');
-  const name = byId('setup-name').value;
-  const pin = byId('setup-pin').value;
-  const confirmation = byId('setup-pin-confirm').value;
-  if (pin !== confirmation) {
+  const user = selectedCentralUser();
+  if (!user) {
+    showAuthError('Seleziona un utente.');
+    return;
+  }
+
+  const pin = byId('activation-pin').value;
+  if (pin !== byId('activation-pin-confirm').value) {
     showAuthError('I PIN non coincidono.');
     return;
   }
+
   const submit = submitButtonFor(event);
   if (submit) submit.disabled = true;
   try {
-    const user = await bootstrapAdministrator(name, pin);
-    await enterApplication(user);
+    const localUser = await activateCentralUser({
+      username: user.username,
+      activationCode: byId('activation-code').value,
+      pin,
+    });
+    await enterApplication(localUser);
   } catch (error) {
-    if (error?.code === 'SETUP_ALREADY_COMPLETED') {
-      await showLoginScreen();
-      showAuthError('Configurazione gia completata in un\'altra finestra. Accedi con il tuo utente.');
-      return;
-    }
-    showAuthError(error?.message ?? 'Creazione non riuscita.');
+    showAuthError(error?.message ?? 'Attivazione non riuscita.');
+    byId('activation-code').select();
   } finally {
     if (submit) submit.disabled = false;
   }
@@ -425,18 +485,58 @@ async function handleSetup(event) {
 async function handleLogin(event) {
   event.preventDefault();
   showAuthError('');
+  const user = selectedCentralUser();
+  if (!user) {
+    showAuthError('Seleziona un utente.');
+    return;
+  }
+
   const submit = submitButtonFor(event);
   if (submit) submit.disabled = true;
   try {
-    const userId = byId('login-user').value;
-    const user = await login(userId, byId('login-pin').value);
-    localStorage.setItem('last-user-id', user.id);
-    await enterApplication(user);
+    const localUser = await loginCentralUser({
+      username: user.username,
+      pin: byId('login-pin').value,
+    });
+    await enterApplication(localUser);
   } catch (error) {
     showAuthError(error?.message ?? 'Accesso non riuscito.');
     byId('login-pin').select();
   } finally {
     if (submit) submit.disabled = false;
+  }
+}
+
+async function refreshCentralUsers() {
+  showAuthError('');
+  await showCentralAuthScreen({ forceNetwork: navigator.onLine });
+}
+
+async function handleOnlineConnection() {
+  updateConnectionStatus();
+  if (sessionRevalidationRunning) return;
+
+  if (!currentUser) {
+    if (!byId('auth-screen').hidden) await showCentralAuthScreen();
+    return;
+  }
+
+  sessionRevalidationRunning = true;
+  try {
+    const verifiedUser = await verifyCentralSession();
+    if (!verifiedUser) {
+      currentUser = null;
+      sitesCache = [];
+      usersCache = [];
+      await showCentralAuthScreen({ initialError: 'La sessione non è più valida. Accedi nuovamente.' });
+      return;
+    }
+    currentUser = verifiedUser;
+    updateCurrentUserUi();
+  } catch (error) {
+    console.warn('Verifica sessione non completata.', error);
+  } finally {
+    sessionRevalidationRunning = false;
   }
 }
 
@@ -458,6 +558,7 @@ function updateCurrentUserUi() {
     ? `${currentUser.name} - Amministratore`
     : currentUser.name;
   byId('admin-menu').hidden = !isAdministrator(currentUser);
+  byId('manage-users-button').hidden = true;
 }
 
 async function refreshMetadata() {
@@ -660,7 +761,7 @@ async function handleLogout() {
   galleryController.clearSelection();
   filterController.clearSite();
   try {
-    await logout();
+    await logoutCentralUser();
   } catch (error) {
     showToast(error?.message ?? 'Uscita non riuscita.', { type: 'error' });
     return;
@@ -670,7 +771,7 @@ async function handleLogout() {
   usersCache = [];
   byId('upload-site-select').value = '';
   updateUploadHomeFeedback();
-  await showLoginScreen();
+  await showCentralAuthScreen();
 }
 
 function createTextElement(tag, text, className = '') {

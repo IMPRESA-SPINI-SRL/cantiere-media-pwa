@@ -9,12 +9,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Cantiere Media">
   <meta name="format-detection" content="telephone=no">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://func-cantiere-media-spini-prod-cbaudcavfabuemex.italynorth-01.azurewebsites.net; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>Cantiere Media</title>
-  <link rel="manifest" href="./manifest.json?v=1.4.3">
+  <link rel="manifest" href="./manifest.json?v=1.5.0">
   <link rel="apple-touch-icon" href="./icons/icon-180.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./css/style.css?v=1.4.3">
+  <link rel="stylesheet" href="./css/style.css?v=1.5.0">
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
@@ -43,36 +43,43 @@
       <h1>Cantiere Media</h1>
       <p class="muted">Foto e video di cantiere, disponibili offline.</p>
 
-      <form id="setup-form" hidden>
-        <h2>Primo avvio</h2>
-        <p>Crea il primo amministratore del dispositivo.</p>
-        <label class="field">
-          <span>Nome</span>
-          <input id="setup-name" name="name" autocomplete="name" required maxlength="80">
-        </label>
-        <label class="field">
-          <span>PIN</span>
-          <input id="setup-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" required maxlength="8">
-        </label>
-        <label class="field">
-          <span>Conferma PIN</span>
-          <input id="setup-pin-confirm" name="pinConfirm" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" required maxlength="8">
-        </label>
-        <button class="button button-primary button-block" type="submit">Crea amministratore</button>
-      </form>
-
-      <form id="login-form" hidden>
-        <h2>Accesso</h2>
+      <div id="central-auth-panel">
+        <p id="auth-network-status" class="auth-status" aria-live="polite"></p>
         <label class="field">
           <span>Utente</span>
           <select id="login-user" required></select>
         </label>
-        <label class="field">
-          <span>PIN</span>
-          <input id="login-pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" required maxlength="8">
-        </label>
-        <button class="button button-primary button-block" type="submit">Entra</button>
-      </form>
+        <p id="auth-user-status" class="auth-user-status"></p>
+
+        <form id="activation-form" hidden>
+          <h2>Prima attivazione</h2>
+          <p class="muted">Inserisci il codice personale ricevuto dall’amministratore e scegli un PIN di 6 cifre.</p>
+          <label class="field">
+            <span>Codice di attivazione</span>
+            <input id="activation-code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required maxlength="32">
+          </label>
+          <label class="field">
+            <span>Nuovo PIN</span>
+            <input id="activation-pin" type="password" inputmode="numeric" pattern="[0-9]{6}" autocomplete="new-password" required maxlength="6">
+          </label>
+          <label class="field">
+            <span>Conferma PIN</span>
+            <input id="activation-pin-confirm" type="password" inputmode="numeric" pattern="[0-9]{6}" autocomplete="new-password" required maxlength="6">
+          </label>
+          <button class="button button-primary button-block" type="submit">Attiva e accedi</button>
+        </form>
+
+        <form id="login-form" hidden>
+          <h2>Accesso</h2>
+          <label class="field">
+            <span>PIN</span>
+            <input id="login-pin" type="password" inputmode="numeric" pattern="[0-9]{6}" autocomplete="current-password" required maxlength="6">
+          </label>
+          <button class="button button-primary button-block" type="submit">Entra</button>
+        </form>
+
+        <button id="auth-refresh-users" class="button button-text button-block" type="button">Aggiorna elenco utenti</button>
+      </div>
       <p id="auth-error" class="form-error" hidden></p>
     </div>
   </section>
@@ -378,6 +385,6 @@
   </div>
   <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 
-  <script type="module" src="./js/bootstrap-1.4.3.js"></script>
+  <script type="module" src="./js/bootstrap-1.5.0.js"></script>
 </body>
 </html>

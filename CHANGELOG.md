@@ -3,6 +3,22 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
+## [1.5.0] - 2026-07-23
+
+### Aggiunto
+
+- Accesso centralizzato tramite backend Azure Functions.
+- Prima attivazione personale con codice monouso e scelta autonoma del PIN a 6 cifre.
+- Sessione persistente verificata dal servizio aziendale e utilizzabile offline dopo il primo accesso.
+- Registrazione stabile del dispositivo e controllo della sessione al ritorno online.
+- Cache locale dell'elenco utenti per mostrare correttamente la schermata di accesso anche senza rete.
+
+### Modificato
+
+- Gli utenti centrali vengono associati ai profili locali esistenti per conservare cantieri, media e preferenze del dispositivo.
+- Limite video allineato ai requisiti aziendali: 3 minuti e 500 MB.
+- Gestione utenti locale nascosta in attesa del pannello amministrativo centralizzato.
+
 ## [1.4.3] - 2026-07-22
 
 ### Modificato

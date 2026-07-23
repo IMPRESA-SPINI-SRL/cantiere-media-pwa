@@ -8,19 +8,18 @@ import {
   verifyPin,
 } from '../js/auth.js';
 
-test('PIN validation accepts only 4 to 8 decimal digits', () => {
-  assert.equal(validatePin('1234'), true);
-  assert.equal(validatePin('12345678'), true);
-  assert.equal(validatePin('123'), false);
-  assert.equal(validatePin('123456789'), false);
-  assert.equal(validatePin('12a4'), false);
+test('PIN validation accepts exactly 6 decimal digits', () => {
+  assert.equal(validatePin('123456'), true);
+  assert.equal(validatePin('12345'), false);
+  assert.equal(validatePin('1234567'), false);
+  assert.equal(validatePin('12a456'), false);
 });
 
 test('PBKDF2 credentials verify the correct PIN without storing it', async () => {
-  const credentials = await createPinCredentials('2468');
-  assert.equal(await verifyPin('2468', credentials), true);
-  assert.equal(await verifyPin('2469', credentials), false);
-  assert.equal(JSON.stringify(credentials).includes('2468'), false);
+  const credentials = await createPinCredentials('246810');
+  assert.equal(await verifyPin('246810', credentials), true);
+  assert.equal(await verifyPin('246811', credentials), false);
+  assert.equal(JSON.stringify(credentials).includes('246810'), false);
 });
 
 test('public user snapshots do not expose PIN derivation fields', () => {

@@ -64,6 +64,7 @@ const configSource = await readFile(resolve(root, 'js/config.js'), 'utf8');
 const appSource = await readFile(resolve(root, 'js/app.js'), 'utf8');
 const databaseSource = await readFile(resolve(root, 'js/db.js'), 'utf8');
 const authSource = await readFile(resolve(root, 'js/auth.js'), 'utf8');
+const remoteAuthSource = await readFile(resolve(root, 'js/remote-auth.js'), 'utf8');
 const uploadSource = await readFile(resolve(root, 'js/upload.js'), 'utf8');
 const hashSource = await readFile(resolve(root, 'js/file-hash.js'), 'utf8');
 const indexSource = await readFile(resolve(root, 'index.html'), 'utf8');
@@ -87,11 +88,26 @@ if (!changelog.includes(`## [${version}]`)) {
 if (!configSource.includes('DB_VERSION = 4')) {
   throw new Error('La release deve migrare IndexedDB alla versione 4.');
 }
-if (!authSource.includes('restoreSession') || !authSource.includes("SESSION_SETTING_KEY = 'auth-session'")) {
-  throw new Error('Sessione persistente non implementata.');
+if (!remoteAuthSource.includes("SESSION_KEY = 'central-auth-session'")
+  || !remoteAuthSource.includes('restoreCentralSession')
+  || !remoteAuthSource.includes('activateCentralUser')
+  || !remoteAuthSource.includes('loginCentralUser')) {
+  throw new Error('Accesso centralizzato o sessione persistente non implementati.');
 }
-if (!appSource.includes('const sessionUser = await restoreSession()') || !appSource.includes('await logout()')) {
-  throw new Error('Avvio automatico o logout persistente non collegati all interfaccia.');
+if (!appSource.includes('const sessionUser = await restoreCentralSession()')
+  || !appSource.includes('await logoutCentralUser()')) {
+  throw new Error('Avvio automatico o logout centralizzato non collegati all interfaccia.');
+}
+if (!configSource.includes('API_BASE_URL =')
+  || !indexSource.includes('id="activation-form"')
+  || !serviceWorkerSource.includes('./js/remote-auth.js?v=')) {
+  throw new Error('Configurazione o interfaccia dell accesso centralizzato incompleta.');
+}
+if (!configSource.includes('VIDEO_MAX_SECONDS: 180')
+  || !configSource.includes('VIDEO_MAX_BYTES: 500 * 1024 * 1024')
+  || !configSource.includes('PIN_MIN_LENGTH: 6')
+  || !configSource.includes('PIN_MAX_LENGTH: 6')) {
+  throw new Error('Limiti PIN o video non allineati ai requisiti aziendali.');
 }
 if (!databaseSource.includes("ensureIndex(media, 'siteContentHash', ['siteId', 'contentHash'], { unique: true })")
   || !databaseSource.includes("ensureIndex(media, 'siteTypeSize', ['siteId', 'mediaType', 'size'])")
