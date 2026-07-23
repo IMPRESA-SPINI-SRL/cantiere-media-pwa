@@ -1,5 +1,7 @@
-import { getSetting, setSetting } from './db.js?v=1.5.0';
-import { SITE_STATUSES } from './config.js?v=1.5.0';
+import { getSetting, setSetting } from './db.js?v=1.6.0';
+import { SITE_STATUSES } from './config.js?v=1.6.0';
+import { isConnectivityError } from './remote-auth.js?v=1.6.0';
+import { getRemoteSiteFavorites, putRemoteSiteFavorites } from './site-api.js?v=1.6.0';
 
 export const SITE_FAVORITE_CONTEXTS = Object.freeze({
   ARCHIVE: 'archive',
@@ -12,10 +14,14 @@ function validateContext(context) {
   }
 }
 
-function settingKey(userId, context) {
+export function siteFavoritesSettingKey(userId, context) {
   validateContext(context);
   if (!userId) throw new Error('Utente non valido.');
   return `site-favorites::${userId}::${context}`;
+}
+
+export function siteFavoritesDirtyKey(userId, context) {
+  return `${siteFavoritesSettingKey(userId, context)}::dirty`;
 }
 
 function normalizeIds(value) {
@@ -31,19 +37,59 @@ function compareSiteNames(left, right) {
 }
 
 export async function getSiteFavoriteIds(userId, context) {
-  return normalizeIds(await getSetting(settingKey(userId, context), []));
+  return normalizeIds(await getSetting(siteFavoritesSettingKey(userId, context), []));
+}
+
+export async function setSiteFavoriteIds(userId, context, ids, { dirty = false } = {}) {
+  const value = normalizeIds(ids);
+  await setSetting(siteFavoritesSettingKey(userId, context), value);
+  await setSetting(siteFavoritesDirtyKey(userId, context), Boolean(dirty));
+  return value;
+}
+
+export function shouldPushSiteFavorites({ firstMigration = false, dirty = false, localIds = [] } = {}) {
+  return Boolean(dirty || (firstMigration && Array.isArray(localIds) && localIds.length > 0));
+}
+
+export async function synchronizeSiteFavorites(userId, context, { firstMigration = false } = {}) {
+  const localIds = await getSiteFavoriteIds(userId, context);
+  const dirty = Boolean(await getSetting(siteFavoritesDirtyKey(userId, context), false));
+
+  if (shouldPushSiteFavorites({ firstMigration, dirty, localIds })) {
+    const saved = await putRemoteSiteFavorites(context, localIds);
+    return setSiteFavoriteIds(userId, context, saved, { dirty: false });
+  }
+
+  const remoteIds = await getRemoteSiteFavorites(context);
+  return setSiteFavoriteIds(userId, context, remoteIds, { dirty: false });
 }
 
 export async function toggleSiteFavorite(userId, context, siteId) {
   if (!siteId) throw new Error('Cantiere non valido.');
-  const key = settingKey(userId, context);
-  const ids = new Set(normalizeIds(await getSetting(key, [])));
+  const key = siteFavoritesSettingKey(userId, context);
+  const previous = normalizeIds(await getSetting(key, []));
+  const ids = new Set(previous);
   const favorite = !ids.has(siteId);
   if (favorite) ids.add(siteId);
   else ids.delete(siteId);
   const value = [...ids];
-  await setSetting(key, value);
-  return { favorite, ids: value };
+
+  await setSiteFavoriteIds(userId, context, value, { dirty: true });
+
+  if (navigator.onLine) {
+    try {
+      const saved = await putRemoteSiteFavorites(context, value);
+      await setSiteFavoriteIds(userId, context, saved, { dirty: false });
+      return { favorite: saved.includes(siteId), ids: saved, synced: true };
+    } catch (error) {
+      if (!isConnectivityError(error)) {
+        await setSiteFavoriteIds(userId, context, previous, { dirty: false });
+        throw error;
+      }
+    }
+  }
+
+  return { favorite, ids: value, synced: false };
 }
 
 export function groupSitesForPicker(sites, favoriteIds) {

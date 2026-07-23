@@ -1,4 +1,4 @@
-import { API_BASE_URL, ROLES, STORE_NAMES } from './config.js?v=1.5.0';
+import { API_BASE_URL, ROLES, STORE_NAMES } from './config.js?v=1.6.0';
 import {
   deleteSetting,
   getAllRecords,
@@ -6,9 +6,9 @@ import {
   getSetting,
   putRecord,
   setSetting,
-} from './db.js?v=1.5.0';
-import { normalizeText } from './utils.js?v=1.5.0';
-import { toPublicUser } from './auth.js?v=1.5.0';
+} from './db.js?v=1.6.0';
+import { normalizeText } from './utils.js?v=1.6.0';
+import { toPublicUser } from './auth.js?v=1.6.0';
 
 const SESSION_KEY = 'central-auth-session';
 const CACHED_USERS_KEY = 'central-auth-users';
@@ -36,7 +36,7 @@ function isSessionExpired(session, now = Date.now()) {
   return !Number.isFinite(expiry) || expiry <= now;
 }
 
-function isConnectivityError(error) {
+export function isConnectivityError(error) {
   return error?.name === 'TypeError'
     || error?.name === 'AbortError'
     || error?.code === 'NETWORK_ERROR';
@@ -191,6 +191,15 @@ async function saveSession(result, localUser) {
   await deleteSetting(LEGACY_SESSION_KEY).catch(() => {});
   localStorage.setItem(LAST_USERNAME_KEY, result.user.username);
   return localUser;
+}
+
+
+export async function centralApiRequest(path, options = {}) {
+  const session = await getSetting(SESSION_KEY, null);
+  if (!session?.token || isSessionExpired(session)) {
+    throw new CentralAuthError('Sessione non valida o scaduta.', 'SESSION_INVALID');
+  }
+  return apiRequest(path, { ...options, token: session.token });
 }
 
 export async function listCentralUsers({ allowCache = true } = {}) {

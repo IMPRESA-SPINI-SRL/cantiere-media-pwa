@@ -5,8 +5,8 @@ import {
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.5.0';
-import { updateCurrentUserSnapshot } from './auth.js?v=1.5.0';
+} from './config.js?v=1.6.0';
+import { updateCurrentUserSnapshot } from './auth.js?v=1.6.0';
 import {
   activateCentralUser,
   getLastUsername,
@@ -15,28 +15,29 @@ import {
   logoutCentralUser,
   restoreCentralSession,
   verifyCentralSession,
-} from './remote-auth.js?v=1.5.0';
+} from './remote-auth.js?v=1.6.0';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.5.0';
-import { FilterController, viewModeLabel } from './filters.js?v=1.5.0';
-import { GalleryController } from './gallery.js?v=1.5.0';
+} from './db.js?v=1.6.0';
+import { FilterController, viewModeLabel } from './filters.js?v=1.6.0';
+import { GalleryController } from './gallery.js?v=1.6.0';
 import {
   getSiteFavoriteIds,
   SITE_FAVORITE_CONTEXTS,
   sortSitesByFavorites,
   toggleSiteFavorite,
-} from './site-favorites.js?v=1.5.0';
-import { SitePickerController } from './site-picker.js?v=1.5.0';
+} from './site-favorites.js?v=1.6.0';
+import { SitePickerController } from './site-picker.js?v=1.6.0';
+import { synchronizeSites } from './site-sync.js?v=1.6.0';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
   partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.5.0';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.5.0';
+} from './media.js?v=1.6.0';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.6.0';
 import {
   createSite,
   deleteSiteInBatches,
@@ -44,13 +45,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.5.0';
-import { UploadController } from './upload.js?v=1.5.0';
+} from './sites.js?v=1.6.0';
+import { UploadController } from './upload.js?v=1.6.0';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.5.0';
+} from './users.js?v=1.6.0';
 import {
   byId,
   closeDialog,
@@ -59,9 +60,9 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.5.0';
-import { debounce, formatBytes } from './utils.js?v=1.5.0';
-import { ViewerController } from './viewer.js?v=1.5.0';
+} from './ui.js?v=1.6.0';
+import { debounce, formatBytes } from './utils.js?v=1.6.0';
+import { ViewerController } from './viewer.js?v=1.6.0';
 
 let currentUser = null;
 let sitesCache = [];
@@ -360,6 +361,8 @@ async function start() {
   updateConnectionStatus();
   updateInstallButton();
   byId('version-label').textContent = `Versione ${APP_VERSION}`;
+  const authVersionLabel = byId('auth-version-label');
+  if (authVersionLabel) authVersionLabel.textContent = `Versione ${APP_VERSION}`;
   registerServiceWorker();
 
   try {
@@ -533,6 +536,10 @@ async function handleOnlineConnection() {
     }
     currentUser = verifiedUser;
     updateCurrentUserUi();
+    const syncResult = await refreshMetadata();
+    if (syncResult?.changed) {
+      showToast('Elenco cantieri sincronizzato.', { type: 'success' });
+    }
   } catch (error) {
     console.warn('Verifica sessione non completata.', error);
   } finally {
@@ -563,6 +570,17 @@ function updateCurrentUserUi() {
 
 async function refreshMetadata() {
   const selectedSiteId = filterController?.getValue().siteId;
+  let syncResult = null;
+  if (navigator.onLine && currentUser) {
+    try {
+      syncResult = await synchronizeSites(currentUser);
+    } catch (error) {
+      console.warn('Sincronizzazione cantieri non completata.', error);
+      if (error?.code !== 'NETWORK_ERROR') {
+        showToast(error?.message ?? 'Sincronizzazione cantieri non riuscita.', { type: 'warning' });
+      }
+    }
+  }
   const [users, sites, archiveFavorites, uploadFavorites] = await Promise.all([
     listUsers(),
     listSites(),
@@ -580,6 +598,7 @@ async function refreshMetadata() {
   populateUploadSiteSelect(filterController.getValue().siteId);
   updateSitePickerTriggers();
   updateUploadHomeFeedback();
+  return syncResult;
 }
 
 function setView(viewMode, { closeMenu = true } = {}) {
@@ -860,12 +879,19 @@ async function saveSiteEditor(event) {
   const submit = submitButtonFor(event);
   if (submit) submit.disabled = true;
   try {
-    if (id) await updateSite(currentUser, id, data);
-    else await createSite(currentUser, data);
+    const savedSite = id
+      ? await updateSite(currentUser, id, data)
+      : await createSite(currentUser, data);
     closeSiteEditor();
     await refreshMetadata();
     await renderSitesManagement();
-    showToast(id ? 'Cantiere aggiornato.' : 'Cantiere creato.', { type: 'success' });
+    const pending = savedSite?.syncState && savedSite.syncState !== 'synced';
+    showToast(
+      pending
+        ? `${id ? 'Cantiere aggiornato' : 'Cantiere creato'} sul dispositivo. Sincronizzazione in attesa.`
+        : `${id ? 'Cantiere aggiornato' : 'Cantiere creato'}.`,
+      { type: pending ? 'warning' : 'success', duration: pending ? 5000 : 3000 },
+    );
   } catch (error) {
     showToast(error?.message ?? 'Salvataggio non riuscito.', { type: 'error' });
   } finally {
@@ -906,8 +932,10 @@ async function confirmSiteDeletion(site) {
     await renderSitesManagement();
     if (wasSelected) filterController.clearSite();
     showToast(
-      `Cantiere eliminato. Media rimossi: ${result.deletedMedia}.`,
-      { type: 'success', duration: 5000 },
+      result.syncPending
+        ? `Cantiere rimosso dal dispositivo. Media rimossi: ${result.deletedMedia}. Eliminazione centrale in attesa.`
+        : `Cantiere eliminato. Media rimossi: ${result.deletedMedia}.`,
+      { type: result.syncPending ? 'warning' : 'success', duration: 5000 },
     );
   } catch (error) {
     showToast(error?.message ?? 'Eliminazione del cantiere non riuscita.', { type: 'error' });

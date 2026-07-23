@@ -1,10 +1,10 @@
 # Cantiere Media PWA
 
-Versione 1.5.0.
+Versione 1.6.0.
 
 Le intestazioni dei gruppi cantieri nei selettori sono evidenziate con la palette rossa aziendale per una lettura piu immediata.
 
-PWA mobile-first per acquisire, importare e consultare foto e video dei cantieri senza un backend obbligatorio. La priorita operativa e il caricamento: dopo il login l'utente trova immediatamente il cantiere e i tre comandi `Scatta foto`, `Registra video` e `Scegli dalla galleria`.
+PWA mobile-first per acquisire, importare e consultare foto e video dei cantieri. L'autenticazione e l'elenco cantieri sono centralizzati nel backend Azure, mentre foto, video e dati necessari restano disponibili offline sul dispositivo. La priorita operativa e il caricamento: dopo il login l'utente trova immediatamente il cantiere e i tre comandi `Scatta foto`, `Registra video` e `Scegli dalla galleria`.
 
 Il progetto usa HTML, CSS e JavaScript Vanilla. Dopo il primo caricamento dell'application shell, login, dati e media locali funzionano offline.
 
@@ -12,6 +12,13 @@ Il progetto usa HTML, CSS e JavaScript Vanilla. Dopo il primo caricamento dell'a
 ## Accesso persistente
 
 Dopo un accesso PIN corretto, la sessione resta attiva sul dispositivo anche chiudendo o riaprendo la PWA. Il PIN viene richiesto nuovamente dopo `Esci`, se l'utente viene disattivato oppure se vengono cancellati i dati dell'app. Non vengono memorizzati PIN in chiaro.
+
+
+## Cantieri centralizzati
+
+La versione 1.6.0 sincronizza lo stesso elenco cantieri tra tutti i dispositivi autorizzati. I cantieri locali già presenti vengono migrati automaticamente senza cancellare foto o video. Creazione, modifica ed eliminazione funzionano anche offline: l'operazione resta in attesa e viene inviata al backend quando torna la connessione. I preferiti sono sincronizzati per utente e restano indipendenti tra Caricamento e Archivio.
+
+Il nome della cartella OneDrive viene inizialmente fissato uguale al nome del cantiere e rimane stabile anche se cambia lo stato del cantiere.
 
 ## Controllo duplicati
 
@@ -37,8 +44,8 @@ Non aprire direttamente `index.html` con `file://`: moduli ES, Service Worker, W
 
 ## Primo utilizzo
 
-1. Creare il primo amministratore e scegliere un PIN da 4 a 8 cifre.
-2. Aprire il menu Amministrazione e creare almeno un cantiere.
+1. Attivare l'utente aziendale con il codice personale e scegliere un PIN di 6 cifre.
+2. Attendere la sincronizzazione automatica dei cantieri oppure crearne uno dal menu Amministrazione.
 3. Nella schermata `Carica`, selezionare il cantiere.
 4. Toccare direttamente `Scatta foto`, `Registra video` oppure `Scegli dalla galleria`.
 5. Aprire `Archivio` soltanto quando serve consultare il materiale.
@@ -105,7 +112,7 @@ Su PC il selettore cantieri si apre centrato nello schermo, con altezza limitata
 - `media`: soli metadati indicizzati.
 - `mediaBlobs`: file originali.
 - `thumbnails`: miniature generate su richiesta.
-- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.5.0.
+- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.6.0.
 - `settings`: impostazioni tecniche, controllo tentativi PIN e cantieri preferiti per utente e contesto.
 
 Le query dell'Archivio usano indici composti e cursori discendenti. Non viene eseguito un caricamento completo dei media per poi filtrarli.

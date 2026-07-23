@@ -792,7 +792,7 @@ dialog::backdrop { background: rgba(10, 16, 14, 0.55); backdrop-filter: blur(2px
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
-/* Accesso centralizzato - versione 1.5.0 */
+/* Accesso centralizzato - versione 1.6.0 */
 .auth-status,
 .auth-user-status {
   margin: 10px 0 0;
@@ -811,3 +811,10 @@ dialog::backdrop { background: rgba(10, 16, 14, 0.55); backdrop-filter: blur(2px
 #activation-form h2,
 #login-form h2 { margin-top: 22px; }
 #activation-code { text-transform: uppercase; letter-spacing: 0.08em; }
+
+.auth-version-label {
+  margin: 1.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+}

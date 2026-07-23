@@ -2,7 +2,7 @@
 
 ## Obiettivi e invarianti
 
-Cantiere Media e una PWA offline-first senza backend obbligatorio. Le decisioni tecniche devono preservare questi invarianti:
+Cantiere Media e una PWA offline-first collegata a un backend Azure per autenticazione e cantieri condivisi. Le decisioni tecniche devono preservare questi invarianti:
 
 1. la prima vista operativa e il caricamento, non l'Archivio;
 2. all'avvio non vengono letti record dagli store `media`, `mediaBlobs` o `thumbnails`;
@@ -25,7 +25,9 @@ Cantiere Media e una PWA offline-first senza backend obbligatorio. Le decisioni 
 - `media.js`: validazione file, metadati, miniature, condivisione, download e quota storage.
 - `upload.js`: ingressi diretti foto/video/galleria, pipeline sequenziale e avanzamento per file.
 - `viewer.js`: visualizzatore foto/video, doppio tap, pinch, vincoli di trascinamento e controlli video applicativi.
-- `site-favorites.js`: preferenze cantieri personali e indipendenti per Caricamento e Archivio, persistite in `settings`.
+- `site-favorites.js`: preferenze cantieri personali e indipendenti per Caricamento e Archivio, persistite localmente e sincronizzate nel backend.
+- `site-api.js`: chiamate autenticate alle API centrali dei cantieri.
+- `site-sync.js`: migrazione non distruttiva, coda offline, riconciliazione e cancellazioni remote.
 - `site-picker.js`: elenco cantieri con stella, gruppi preferiti/altri e selezione accessibile.
 - `permissions.js`: regole di autorizzazione pure e testabili.
 - `sites.js`: ciclo di vita dei cantieri e cancellazione a lotti riprendibile.

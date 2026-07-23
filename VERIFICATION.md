@@ -1,4 +1,4 @@
-# Verifica release 1.5.0
+# Verifica release 1.6.0
 
 Data: 2026-07-22.
 
@@ -6,7 +6,7 @@ Data: 2026-07-22.
 
 - `npm test`: 55 test superati su 55.
 - `npm run check`: 36 file JavaScript validi.
-- versione `1.5.0` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
+- versione `1.6.0` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
 - logo Impresa Spini, palette coordinata e nuove icone PWA inclusi nell'application shell;
 - asset PWA e tre icone verificate nelle dimensioni dichiarate;
 - assenza delle sezioni `I miei upload`, `Preferiti archivio` e `Preferiti upload` verificata;
@@ -49,26 +49,16 @@ npm run smoke
 CHROMIUM_PATH=/percorso/chromium npm run smoke
 ```
 
-## Collaudo specifico della release 1.5.0
+## Collaudo specifico della release 1.6.0
 
-Su PC:
-
-1. aprire i selettori cantieri in Caricamento e Archivio e verificare che `PREFERITI`, `CANTIERI ATTIVI` e `CANTIERI CONCLUSI` siano chiaramente distinti con testo rosso, fondo tenue e bordo laterale;
-2. verificare che la finestra sia centrata e completamente visibile anche quando il comando si trova nella parte bassa della pagina;
-3. posizionare il puntatore sull'elenco e usare la rotellina o il trackpad: devono scorrere i cantieri senza spostare la pagina sottostante;
-4. verificare che siano raggiungibili sia i primi sia gli ultimi cantieri;
-5. ridimensionare la finestra in altezza e riaprire il selettore: deve adattarsi allo spazio disponibile.
-
-Su Samsung/Android:
-
-1. aggiornare l'app e controllare `Versione 1.5.0` nel menu;
-2. verificare che le tre intestazioni dei gruppi siano ben leggibili e non si confondano con i nomi dei cantieri;
-3. aprire il selettore della schermata Carica e verificare l'ordine: preferiti alfabetici, attivi alfabetici, conclusi alfabetici;
-4. aprire l'Archivio e verificare che i preferiti del relativo selettore siano indipendenti da quelli del Caricamento;
-5. selezionare `Tutti i cantieri` e verificare che la galleria mostri media provenienti da cantieri diversi rispettando tipo, autore e data;
-6. verificare che swipe, zoom foto e controlli video continuino a funzionare.
-
-Su iPhone/iOS ripetere gli stessi punti, prestando particolare attenzione agli eventi gesture di Safari e ai file HEIC.
+1. verificare che la versione sia visibile sia nella schermata di accesso sia nel menu;
+2. con internet attivo, controllare che i cantieri locali esistenti compaiano senza duplicazioni e senza perdita di media;
+3. aprire la stessa app su un secondo dispositivo e verificare che l'elenco cantieri sia identico;
+4. modificare nome cliente, indirizzo o stato su un dispositivo e verificare l'aggiornamento sull'altro;
+5. creare un cantiere in modalità aereo, riattivare la connessione e verificare la sincronizzazione;
+6. controllare che i preferiti di Caricamento e Archivio restino indipendenti ma seguano lo stesso utente sugli altri dispositivi;
+7. eliminare soltanto un cantiere di prova e verificare la propagazione della cancellazione;
+8. verificare nuovamente caricamento, Archivio, zoom, condivisione e funzionamento offline.
 
 ## Collaudo generale prima della distribuzione aziendale
 

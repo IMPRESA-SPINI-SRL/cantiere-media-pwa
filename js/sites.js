@@ -1,4 +1,4 @@
-import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.5.0';
+import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.6.0';
 import {
   countMediaForSite,
   deleteMediaCascade,
@@ -8,17 +8,16 @@ import {
   getMediaIdsForSite,
   getRecord,
   putRecord,
-} from './db.js?v=1.5.0';
-import { canManageSites } from './permissions.js?v=1.5.0';
-import { createId, normalizeText, sleep } from './utils.js?v=1.5.0';
+} from './db.js?v=1.6.0';
+import { canManageSites } from './permissions.js?v=1.6.0';
+import { isConnectivityError } from './remote-auth.js?v=1.6.0';
+import { createRemoteSite, deleteRemoteSite, updateRemoteSite } from './site-api.js?v=1.6.0';
+import { applyRemoteSite } from './site-sync.js?v=1.6.0';
+import { createId, normalizeText, sleep } from './utils.js?v=1.6.0';
 
 async function requireAdministrator(actor) {
-  const storedActor = actor?.id
-    ? await getRecord(STORE_NAMES.USERS, actor.id)
-    : null;
-  if (!canManageSites(storedActor)) {
-    throw new Error('Operazione riservata agli amministratori.');
-  }
+  const storedActor = actor?.id ? await getRecord(STORE_NAMES.USERS, actor.id) : null;
+  if (!canManageSites(storedActor)) throw new Error('Operazione riservata agli amministratori.');
   return storedActor;
 }
 
@@ -35,27 +34,20 @@ function validateSiteInput(input) {
     client: String(input.client ?? '').trim(),
     address: String(input.address ?? '').trim(),
     status,
+    folderName: String(input.folderName ?? input.name ?? '').trim() || name,
   };
 }
 
 async function ensureUniqueName(nameNormalized, ignoredId = null) {
-  const sites = await getAllByIndex(
-    STORE_NAMES.SITES,
-    'nameNormalized',
-    IDBKeyRange.only(nameNormalized),
-  );
-  if (sites.some((site) => site.id !== ignoredId)) {
+  const sites = await getAllByIndex(STORE_NAMES.SITES, 'nameNormalized', IDBKeyRange.only(nameNormalized));
+  if (sites.some((site) => site.id !== ignoredId && site.status !== SITE_STATUSES.DELETING)) {
     throw new Error('Esiste gia un cantiere con questo nome.');
   }
 }
 
 export async function listSites({ includeDeleting = false } = {}) {
   const sites = await getAllRecords(STORE_NAMES.SITES);
-  const rank = {
-    [SITE_STATUSES.ACTIVE]: 0,
-    [SITE_STATUSES.COMPLETED]: 1,
-    [SITE_STATUSES.DELETING]: 2,
-  };
+  const rank = { [SITE_STATUSES.ACTIVE]: 0, [SITE_STATUSES.COMPLETED]: 1, [SITE_STATUSES.DELETING]: 2 };
   return sites
     .filter((site) => includeDeleting || site.status !== SITE_STATUSES.DELETING)
     .sort((left, right) => (
@@ -73,13 +65,28 @@ export async function createSite(actor, input) {
   const data = validateSiteInput(input);
   await ensureUniqueName(data.nameNormalized);
   const timestamp = Date.now();
-  const site = {
+  let site = {
     id: createId('site'),
     ...data,
     createdAt: timestamp,
     updatedAt: timestamp,
+    centralSynced: false,
+    serverRevision: 0,
+    syncState: 'pending-create',
   };
   await putRecord(STORE_NAMES.SITES, site);
+
+  if (navigator.onLine) {
+    try {
+      const remote = await createRemoteSite(site);
+      site = await applyRemoteSite(remote, site);
+    } catch (error) {
+      if (!isConnectivityError(error)) {
+        await deleteRecord(STORE_NAMES.SITES, site.id);
+        throw error;
+      }
+    }
+  }
   return site;
 }
 
@@ -87,17 +94,23 @@ export async function updateSite(actor, siteId, input) {
   await requireAdministrator(actor);
   const existing = await getSite(siteId);
   if (!existing) throw new Error('Cantiere non trovato.');
-  if (existing.status === SITE_STATUSES.DELETING) {
-    throw new Error('Il cantiere e in eliminazione.');
-  }
+  if (existing.status === SITE_STATUSES.DELETING) throw new Error('Il cantiere e in eliminazione.');
   const data = validateSiteInput({ ...existing, ...input });
   await ensureUniqueName(data.nameNormalized, siteId);
-  const updated = {
-    ...existing,
-    ...data,
-    updatedAt: Date.now(),
-  };
+  let updated = { ...existing, ...data, updatedAt: Date.now(), syncState: 'pending-update' };
   await putRecord(STORE_NAMES.SITES, updated);
+
+  if (navigator.onLine) {
+    try {
+      const remote = await updateRemoteSite(updated);
+      updated = await applyRemoteSite(remote, updated);
+    } catch (error) {
+      if (!isConnectivityError(error)) {
+        await putRecord(STORE_NAMES.SITES, existing);
+        throw error;
+      }
+    }
+  }
   return updated;
 }
 
@@ -105,27 +118,35 @@ export async function getSiteMediaCount(siteId) {
   return countMediaForSite(siteId);
 }
 
-export async function deleteSiteInBatches(
-  actor,
-  siteId,
-  onProgress = () => {},
-  { expectedUpdatedAt = null } = {},
-) {
+export async function deleteSiteInBatches(actor, siteId, onProgress = () => {}, { expectedUpdatedAt = null } = {}) {
   const storedActor = await requireAdministrator(actor);
   const existing = await getSite(siteId);
-  if (!existing) return { deletedMedia: 0 };
+  if (!existing) return { deletedMedia: 0, syncPending: false };
   if (expectedUpdatedAt != null && existing.updatedAt !== expectedUpdatedAt) {
     throw new Error('Il cantiere e stato modificato. Ripetere la conferma di eliminazione.');
   }
 
-  if (existing.status !== SITE_STATUSES.DELETING) {
-    await putRecord(STORE_NAMES.SITES, {
-      ...existing,
-      previousStatus: existing.status,
-      status: SITE_STATUSES.DELETING,
-      deletionStartedAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+  const tombstone = {
+    ...existing,
+    previousStatus: existing.status,
+    status: SITE_STATUSES.DELETING,
+    deletionStartedAt: existing.deletionStartedAt || Date.now(),
+    updatedAt: Date.now(),
+    syncState: 'pending-delete',
+  };
+  await putRecord(STORE_NAMES.SITES, tombstone);
+
+  let remoteDeleted = false;
+  if (navigator.onLine) {
+    try {
+      await deleteRemoteSite(tombstone);
+      remoteDeleted = true;
+    } catch (error) {
+      if (!isConnectivityError(error)) {
+        await putRecord(STORE_NAMES.SITES, existing);
+        throw error;
+      }
+    }
   }
 
   let deletedMedia = 0;
@@ -139,17 +160,13 @@ export async function deleteSiteInBatches(
     await sleep(0);
   }
 
-  await deleteRecord(STORE_NAMES.SITES, siteId);
-  return { deletedMedia };
+  if (remoteDeleted) await deleteRecord(STORE_NAMES.SITES, siteId);
+  return { deletedMedia, syncPending: !remoteDeleted };
 }
 
 export async function resumePendingSiteDeletions(actor, onProgress = () => {}) {
   const storedActor = await requireAdministrator(actor);
-  const pending = await getAllByIndex(
-    STORE_NAMES.SITES,
-    'status',
-    IDBKeyRange.only(SITE_STATUSES.DELETING),
-  );
+  const pending = await getAllByIndex(STORE_NAMES.SITES, 'status', IDBKeyRange.only(SITE_STATUSES.DELETING));
   for (const site of pending) {
     await deleteSiteInBatches(storedActor, site.id, (progress) => onProgress({ site, ...progress }));
   }
