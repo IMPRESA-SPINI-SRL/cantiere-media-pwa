@@ -1,4 +1,4 @@
-import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.6.0';
+import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.6.1';
 import {
   deleteMediaCascade,
   deleteRecord,
@@ -8,22 +8,23 @@ import {
   getRecord,
   getSetting,
   putRecord,
+  remapSiteIdAtomic,
   setSetting,
-} from './db.js?v=1.6.0';
-import { isConnectivityError } from './remote-auth.js?v=1.6.0';
+} from './db.js?v=1.6.1';
+import { isConnectivityError } from './remote-auth.js?v=1.6.1';
 import {
   createRemoteSite,
   deleteRemoteSite,
   importLocalSites,
   listRemoteSites,
   updateRemoteSite,
-} from './site-api.js?v=1.6.0';
+} from './site-api.js?v=1.6.1';
 import {
   getSiteFavoriteIds,
   setSiteFavoriteIds,
   SITE_FAVORITE_CONTEXTS,
   synchronizeSiteFavorites,
-} from './site-favorites.js?v=1.6.0';
+} from './site-favorites.js?v=1.6.1';
 
 const MIGRATION_KEY_PREFIX = 'central-sites-migrated::';
 let syncPromise = null;
@@ -53,33 +54,8 @@ function remoteToLocal(remote, existing = {}) {
   };
 }
 
-async function replaceFavoriteSiteId(oldId, newId) {
-  const settings = await getAllRecords(STORE_NAMES.SETTINGS);
-  for (const record of settings) {
-    if (!record.key?.startsWith('site-favorites::') || !Array.isArray(record.value)) continue;
-    if (!record.value.includes(oldId)) continue;
-    const next = [...new Set(record.value.map((id) => (id === oldId ? newId : id)))];
-    await setSetting(record.key, next);
-  }
-}
-
 async function remapSiteId(oldId, newId) {
-  if (!oldId || !newId || oldId === newId) return;
-  const oldSite = await getRecord(STORE_NAMES.SITES, oldId);
-  if (!oldSite) return;
-  const target = await getRecord(STORE_NAMES.SITES, newId);
-  await putRecord(STORE_NAMES.SITES, { ...oldSite, ...target, id: newId });
-
-  const media = await getAllByIndex(STORE_NAMES.MEDIA, 'siteId', IDBKeyRange.only(oldId));
-  for (const item of media) await putRecord(STORE_NAMES.MEDIA, { ...item, siteId: newId });
-
-  const favorites = await getAllRecords(STORE_NAMES.FAVORITES);
-  for (const favorite of favorites) {
-    if (favorite.siteId === oldId) await putRecord(STORE_NAMES.FAVORITES, { ...favorite, siteId: newId });
-  }
-
-  await replaceFavoriteSiteId(oldId, newId);
-  await deleteRecord(STORE_NAMES.SITES, oldId);
+  await remapSiteIdAtomic(oldId, newId);
 }
 
 async function purgeLocalSite(siteId) {

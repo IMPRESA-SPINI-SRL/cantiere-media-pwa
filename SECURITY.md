@@ -14,7 +14,7 @@ In produzione l'app deve essere pubblicata su HTTPS. Non disattivare la Content 
 
 ## Dati e backup
 
-La release 1.6.0 conserva ancora i media su un solo dispositivo e non include sincronizzazione o backup completo. La cancellazione dei dati del sito, il ripristino del telefono o alcune politiche di storage del sistema possono rendere i file irrecuperabili.
+La release 1.6.1 conserva ancora i media su un solo dispositivo e non include sincronizzazione o backup completo. La cancellazione dei dati del sito, il ripristino del telefono o alcune politiche di storage del sistema possono rendere i file irrecuperabili.
 
 Per media aziendali non sostituibili e necessario definire una procedura di backup verificata prima della distribuzione estesa. Una futura integrazione puo aggiungere esportazione cifrata o sincronizzazione opzionale senza modificare il modello offline-first.
 
@@ -32,7 +32,7 @@ Le impronte SHA-256 servono esclusivamente a riconoscere duplicati esatti all'in
 
 
 
-## Accesso centralizzato 1.6.0
+## Accesso centralizzato 1.6.1
 
 - PIN di 6 cifre verificato esclusivamente dal backend Azure.
 - Token di sessione opaco memorizzato localmente; sul server viene conservato solo l'hash.

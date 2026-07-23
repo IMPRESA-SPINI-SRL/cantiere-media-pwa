@@ -1,5 +1,5 @@
 export const APP_NAME = 'Cantiere Media';
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.6.1';
 export const API_BASE_URL = 'https://func-cantiere-media-spini-prod-cbaudcavfabuemex.italynorth-01.azurewebsites.net';
 export const DB_NAME = 'cantiere-media-db';
 export const DB_VERSION = 4;

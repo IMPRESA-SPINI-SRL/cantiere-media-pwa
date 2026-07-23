@@ -792,7 +792,7 @@ dialog::backdrop { background: rgba(10, 16, 14, 0.55); backdrop-filter: blur(2px
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
-/* Accesso centralizzato - versione 1.6.0 */
+/* Accesso centralizzato - versione 1.6.1 */
 .auth-status,
 .auth-user-status {
   margin: 10px 0 0;

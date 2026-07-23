@@ -3,7 +3,7 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
-## [1.6.0] - 2026-07-23
+## [1.6.1] - 2026-07-23
 
 ### Aggiunto
 

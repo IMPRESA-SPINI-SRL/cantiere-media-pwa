@@ -1,6 +1,6 @@
 # Cantiere Media PWA
 
-Versione 1.6.0.
+Versione 1.6.1.
 
 Le intestazioni dei gruppi cantieri nei selettori sono evidenziate con la palette rossa aziendale per una lettura piu immediata.
 
@@ -16,7 +16,7 @@ Dopo un accesso PIN corretto, la sessione resta attiva sul dispositivo anche chi
 
 ## Cantieri centralizzati
 
-La versione 1.6.0 sincronizza lo stesso elenco cantieri tra tutti i dispositivi autorizzati. I cantieri locali già presenti vengono migrati automaticamente senza cancellare foto o video. Creazione, modifica ed eliminazione funzionano anche offline: l'operazione resta in attesa e viene inviata al backend quando torna la connessione. I preferiti sono sincronizzati per utente e restano indipendenti tra Caricamento e Archivio.
+La versione 1.6.1 sincronizza lo stesso elenco cantieri tra tutti i dispositivi autorizzati. I cantieri locali già presenti vengono migrati automaticamente senza cancellare foto o video. Creazione, modifica ed eliminazione funzionano anche offline: l'operazione resta in attesa e viene inviata al backend quando torna la connessione. I preferiti sono sincronizzati per utente e restano indipendenti tra Caricamento e Archivio.
 
 Il nome della cartella OneDrive viene inizialmente fissato uguale al nome del cantiere e rimane stabile anche se cambia lo stato del cantiere.
 
@@ -112,7 +112,7 @@ Su PC il selettore cantieri si apre centrato nello schermo, con altezza limitata
 - `media`: soli metadati indicizzati.
 - `mediaBlobs`: file originali.
 - `thumbnails`: miniature generate su richiesta.
-- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.6.0.
+- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.6.1.
 - `settings`: impostazioni tecniche, controllo tentativi PIN e cantieri preferiti per utente e contesto.
 
 Le query dell'Archivio usano indici composti e cursori discendenti. Non viene eseguito un caricamento completo dei media per poi filtrarli.

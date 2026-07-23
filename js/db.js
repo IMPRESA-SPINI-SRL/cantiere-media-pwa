@@ -6,9 +6,9 @@ import {
   MEDIA_FILTERS,
   SITE_STATUSES,
   STORE_NAMES,
-} from './config.js?v=1.6.0';
-import { canDeleteMedia } from './permissions.js?v=1.6.0';
-import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.6.0';
+} from './config.js?v=1.6.1';
+import { canDeleteMedia } from './permissions.js?v=1.6.1';
+import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.6.1';
 
 let databasePromise = null;
 
@@ -197,6 +197,89 @@ export async function setSetting(key, value) {
 
 export async function deleteSetting(key) {
   return deleteRecord(STORE_NAMES.SETTINGS, key);
+}
+
+export async function remapSiteIdAtomic(oldId, newId) {
+  if (!oldId || !newId || oldId === newId) return false;
+
+  const database = await openDatabase();
+  const transaction = database.transaction(
+    [
+      STORE_NAMES.SITES,
+      STORE_NAMES.MEDIA,
+      STORE_NAMES.FAVORITES,
+      STORE_NAMES.SETTINGS,
+    ],
+    'readwrite',
+  );
+  const sites = transaction.objectStore(STORE_NAMES.SITES);
+  const media = transaction.objectStore(STORE_NAMES.MEDIA);
+  const favorites = transaction.objectStore(STORE_NAMES.FAVORITES);
+  const settings = transaction.objectStore(STORE_NAMES.SETTINGS);
+  const oldRequest = sites.get(oldId);
+  const targetRequest = sites.get(newId);
+  let loaded = 0;
+  let remapped = false;
+
+  return new Promise((resolve, reject) => {
+    const remapWhenLoaded = () => {
+      loaded += 1;
+      if (loaded !== 2) return;
+
+      const oldSite = oldRequest.result;
+      if (!oldSite) return;
+
+      const targetSite = targetRequest.result;
+      remapped = true;
+
+      // Delete the old key before inserting the new one in the same transaction.
+      // This avoids the unique nameNormalized index rejecting two identical names.
+      sites.delete(oldId);
+      sites.put({ ...oldSite, ...targetSite, id: newId });
+
+      const mediaRequest = media.index('siteId').openCursor(IDBKeyRange.only(oldId));
+      mediaRequest.onsuccess = () => {
+        const cursor = mediaRequest.result;
+        if (!cursor) return;
+        cursor.update({ ...cursor.value, siteId: newId });
+        cursor.continue();
+      };
+
+      const favoritesRequest = favorites.openCursor();
+      favoritesRequest.onsuccess = () => {
+        const cursor = favoritesRequest.result;
+        if (!cursor) return;
+        if (cursor.value.siteId === oldId) {
+          cursor.update({ ...cursor.value, siteId: newId });
+        }
+        cursor.continue();
+      };
+
+      const settingsRequest = settings.openCursor();
+      settingsRequest.onsuccess = () => {
+        const cursor = settingsRequest.result;
+        if (!cursor) return;
+        const record = cursor.value;
+        if (record.key?.startsWith('site-favorites::') && Array.isArray(record.value)) {
+          const next = [...new Set(record.value.map((id) => (id === oldId ? newId : id)))];
+          if (next.some((id, index) => id !== record.value[index]) || next.length !== record.value.length) {
+            cursor.update({ ...record, value: next, updatedAt: Date.now() });
+          }
+        }
+        cursor.continue();
+      };
+    };
+
+    oldRequest.onsuccess = remapWhenLoaded;
+    targetRequest.onsuccess = remapWhenLoaded;
+    transaction.oncomplete = () => resolve(remapped);
+    transaction.onabort = () => reject(
+      transaction.error ?? new Error('Riallineamento del cantiere locale non riuscito.'),
+    );
+    transaction.onerror = () => {
+      // The abort handler reports the final transaction error.
+    };
+  });
 }
 
 export async function getMediaBySiteAndContentHash(siteId, contentHash) {

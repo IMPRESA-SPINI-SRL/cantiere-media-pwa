@@ -1,4 +1,4 @@
-# Verifica release 1.6.0
+# Verifica release 1.6.1
 
 Data: 2026-07-22.
 
@@ -6,7 +6,7 @@ Data: 2026-07-22.
 
 - `npm test`: 55 test superati su 55.
 - `npm run check`: 36 file JavaScript validi.
-- versione `1.6.0` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
+- versione `1.6.1` coerente tra `package.json`, configurazione, bootstrap e Service Worker;
 - logo Impresa Spini, palette coordinata e nuove icone PWA inclusi nell'application shell;
 - asset PWA e tre icone verificate nelle dimensioni dichiarate;
 - assenza delle sezioni `I miei upload`, `Preferiti archivio` e `Preferiti upload` verificata;
@@ -49,7 +49,7 @@ npm run smoke
 CHROMIUM_PATH=/percorso/chromium npm run smoke
 ```
 
-## Collaudo specifico della release 1.6.0
+## Collaudo specifico della release 1.6.1
 
 1. verificare che la versione sia visibile sia nella schermata di accesso sia nel menu;
 2. con internet attivo, controllare che i cantieri locali esistenti compaiano senza duplicazioni e senza perdita di media;

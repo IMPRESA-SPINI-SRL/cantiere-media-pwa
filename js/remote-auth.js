@@ -1,4 +1,4 @@
-import { API_BASE_URL, ROLES, STORE_NAMES } from './config.js?v=1.6.0';
+import { API_BASE_URL, ROLES, STORE_NAMES } from './config.js?v=1.6.1';
 import {
   deleteSetting,
   getAllRecords,
@@ -6,9 +6,9 @@ import {
   getSetting,
   putRecord,
   setSetting,
-} from './db.js?v=1.6.0';
-import { normalizeText } from './utils.js?v=1.6.0';
-import { toPublicUser } from './auth.js?v=1.6.0';
+} from './db.js?v=1.6.1';
+import { normalizeText } from './utils.js?v=1.6.1';
+import { toPublicUser } from './auth.js?v=1.6.1';
 
 const SESSION_KEY = 'central-auth-session';
 const CACHED_USERS_KEY = 'central-auth-users';

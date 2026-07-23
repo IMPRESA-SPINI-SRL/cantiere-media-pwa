@@ -1,6 +1,6 @@
-import { ALL_SITES_ID, SITE_STATUSES } from './config.js?v=1.6.0';
-import { groupSitesForPicker } from './site-favorites.js?v=1.6.0';
-import { closeDialog, openDialog } from './ui.js?v=1.6.0';
+import { ALL_SITES_ID, SITE_STATUSES } from './config.js?v=1.6.1';
+import { groupSitesForPicker } from './site-favorites.js?v=1.6.1';
+import { closeDialog, openDialog } from './ui.js?v=1.6.1';
 
 function createStarIcon() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
