@@ -5,8 +5,8 @@ import {
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.6.1';
-import { updateCurrentUserSnapshot } from './auth.js?v=1.6.1';
+} from './config.js?v=1.7.0';
+import { updateCurrentUserSnapshot } from './auth.js?v=1.7.0';
 import {
   activateCentralUser,
   getLastUsername,
@@ -15,29 +15,33 @@ import {
   logoutCentralUser,
   restoreCentralSession,
   verifyCentralSession,
-} from './remote-auth.js?v=1.6.1';
+} from './remote-auth.js?v=1.7.0';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.6.1';
-import { FilterController, viewModeLabel } from './filters.js?v=1.6.1';
-import { GalleryController } from './gallery.js?v=1.6.1';
+} from './db.js?v=1.7.0';
+import { FilterController, viewModeLabel } from './filters.js?v=1.7.0';
+import { GalleryController } from './gallery.js?v=1.7.0';
 import {
   getSiteFavoriteIds,
   SITE_FAVORITE_CONTEXTS,
   sortSitesByFavorites,
   toggleSiteFavorite,
-} from './site-favorites.js?v=1.6.1';
-import { SitePickerController } from './site-picker.js?v=1.6.1';
-import { synchronizeSites } from './site-sync.js?v=1.6.1';
+} from './site-favorites.js?v=1.7.0';
+import { SitePickerController } from './site-picker.js?v=1.7.0';
+import { synchronizeSites } from './site-sync.js?v=1.7.0';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
   partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.6.1';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.6.1';
+} from './media.js?v=1.7.0';
+import {
+  getMediaSyncSummary,
+  synchronizeMedia,
+} from './media-sync.js?v=1.7.0';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.7.0';
 import {
   createSite,
   deleteSiteInBatches,
@@ -45,13 +49,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.6.1';
-import { UploadController } from './upload.js?v=1.6.1';
+} from './sites.js?v=1.7.0';
+import { UploadController } from './upload.js?v=1.7.0';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.6.1';
+} from './users.js?v=1.7.0';
 import {
   byId,
   closeDialog,
@@ -60,9 +64,9 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.6.1';
-import { debounce, formatBytes } from './utils.js?v=1.6.1';
-import { ViewerController } from './viewer.js?v=1.6.1';
+} from './ui.js?v=1.7.0';
+import { debounce, formatBytes } from './utils.js?v=1.7.0';
+import { ViewerController } from './viewer.js?v=1.7.0';
 
 let currentUser = null;
 let sitesCache = [];
@@ -81,6 +85,7 @@ let siteFavoriteIds = {
 let userEditorOriginal = null;
 let centralUsersCache = [];
 let sessionRevalidationRunning = false;
+let mediaSyncTimer = null;
 
 const reloadGallery = debounce((filters) => {
   if (currentUser && currentView !== VIEW_MODES.UPLOAD) galleryController.reload(filters);
@@ -210,6 +215,144 @@ function updateUploadHomeFeedback(saved = []) {
   feedback.querySelector('span').textContent = `Cantiere: ${activeSite()?.name ?? 'selezionato'}. Disponibili anche offline.`;
 }
 
+function mediaCountLabel(count) {
+  return count === 1 ? '1 file' : `${count} file`;
+}
+
+function renderMediaSyncStatus(state = {}) {
+  const card = byId('media-sync-card');
+  const title = byId('media-sync-title');
+  const text = byId('media-sync-text');
+  const progress = byId('media-sync-progress');
+  const retry = byId('media-sync-retry');
+  if (!card || !title || !text || !progress || !retry) return;
+
+  card.classList.remove('is-syncing', 'is-complete', 'is-warning', 'is-error');
+  retry.hidden = true;
+  progress.hidden = true;
+
+  const summary = state.summary ?? state;
+  const pending = Number(summary.pending || 0);
+  const failed = Number(summary.failed || 0);
+  const totalBytes = Number(summary.totalBytes || 0);
+  const uploadedBytes = Number(summary.uploadedBytes || 0);
+
+  if (state.phase === 'uploading') {
+    const total = Math.max(1, Number(state.totalBytes || 0));
+    const uploaded = Math.min(total, Math.max(0, Number(state.uploadedBytes || 0)));
+    const percent = Math.floor((uploaded / total) * 100);
+    card.classList.add('is-syncing');
+    title.textContent = 'Caricamento su OneDrive';
+    text.textContent = `${state.media?.fileName || 'File'} - ${percent}%`;
+    progress.max = total;
+    progress.value = uploaded;
+    progress.hidden = false;
+    return;
+  }
+
+  if (state.phase === 'starting') {
+    title.textContent = 'Preparazione OneDrive';
+    text.textContent = pending
+      ? `${mediaCountLabel(pending)} in attesa di caricamento.`
+      : 'Controllo dei caricamenti completato.';
+    if (pending) card.classList.add('is-syncing');
+  } else if (state.phase === 'error') {
+    card.classList.add('is-error');
+    title.textContent = 'Caricamento non completato';
+    text.textContent = state.error?.message || 'Si è verificato un errore durante il caricamento.';
+    retry.hidden = false;
+    return;
+  } else if (!navigator.onLine || state.phase === 'offline') {
+    title.textContent = pending ? 'OneDrive in attesa' : 'OneDrive aggiornato';
+    text.textContent = pending
+      ? `${mediaCountLabel(pending)} verranno caricati appena torna la connessione.`
+      : 'Nessun file in attesa di caricamento.';
+    card.classList.add(pending ? 'is-warning' : 'is-complete');
+  } else if (!pending) {
+    card.classList.add('is-complete');
+    title.textContent = 'OneDrive aggiornato';
+    text.textContent = 'Tutti i file sono stati caricati.';
+  } else if (failed) {
+    card.classList.add('is-error');
+    title.textContent = 'Caricamenti da riprovare';
+    text.textContent = `${mediaCountLabel(pending)} in attesa, ${failed} non completati.`;
+    retry.hidden = false;
+  } else {
+    card.classList.add('is-warning');
+    title.textContent = 'Caricamenti in attesa';
+    text.textContent = `${mediaCountLabel(pending)} saranno inviati automaticamente a OneDrive.`;
+  }
+
+  if (pending && totalBytes > 0 && uploadedBytes > 0) {
+    progress.max = totalBytes;
+    progress.value = Math.min(totalBytes, uploadedBytes);
+    progress.hidden = false;
+  }
+}
+
+async function refreshMediaSyncStatus() {
+  try {
+    const summary = await getMediaSyncSummary();
+    renderMediaSyncStatus({
+      phase: navigator.onLine ? 'idle' : 'offline',
+      summary,
+    });
+    return summary;
+  } catch (error) {
+    console.warn('Stato caricamenti OneDrive non disponibile.', error);
+    renderMediaSyncStatus({ phase: 'error', error });
+    return null;
+  }
+}
+
+function scheduleMediaSynchronization(delay = 500, { force = false } = {}) {
+  if (!currentUser || !navigator.onLine) return;
+  clearTimeout(mediaSyncTimer);
+  mediaSyncTimer = setTimeout(() => {
+    mediaSyncTimer = null;
+    runMediaSynchronization({ force }).catch((error) => {
+      console.warn('Sincronizzazione OneDrive non completata.', error);
+    });
+  }, Math.max(0, Number(delay || 0)));
+}
+
+async function runMediaSynchronization({ force = false, announce = false } = {}) {
+  if (!currentUser) return null;
+  if (!navigator.onLine) return refreshMediaSyncStatus();
+
+  try {
+    const result = await synchronizeMedia({
+      force,
+      onProgress: renderMediaSyncStatus,
+    });
+    const summary = await refreshMediaSyncStatus();
+    await updateMenuStorage();
+
+    if (announce && result?.completed) {
+      showToast(
+        result.completed === 1
+          ? '1 file caricato su OneDrive.'
+          : `${result.completed} file caricati su OneDrive.`,
+        { type: 'success' },
+      );
+    }
+
+    if (summary?.pending && navigator.onLine) {
+      const now = Date.now();
+      const nextAttempt = Number(summary.nextAttemptAt || 0);
+      const delay = nextAttempt > now
+        ? Math.min(15 * 60 * 1000, nextAttempt - now + 250)
+        : 1500;
+      scheduleMediaSynchronization(delay);
+    }
+    return result;
+  } catch (error) {
+    renderMediaSyncStatus({ phase: 'error', error });
+    if (announce) showToast(error?.message ?? 'Caricamento OneDrive non riuscito.', { type: 'error' });
+    throw error;
+  }
+}
+
 function startHomeUpload(methodName) {
   if (!activeSite()) {
     const field = byId('upload-site-picker-trigger').closest('.upload-site-field');
@@ -287,6 +430,8 @@ function initializeControllers() {
     getContext: () => ({ site: activeSite(), user: currentUser }),
     onUploaded: async (saved) => {
       updateUploadHomeFeedback(saved);
+      await refreshMediaSyncStatus();
+      scheduleMediaSynchronization(250);
       if (currentView !== VIEW_MODES.UPLOAD) {
         await galleryController.reload(filterController.getValue());
       }
@@ -316,6 +461,9 @@ function bindStaticEvents() {
   byId('home-video-action').addEventListener('click', () => startHomeUpload('startVideoCapture'));
   byId('home-gallery-action').addEventListener('click', () => startHomeUpload('startGalleryImport'));
   byId('open-archive-button').addEventListener('click', () => setView(VIEW_MODES.ARCHIVE));
+  byId('media-sync-retry').addEventListener('click', () => {
+    runMediaSynchronization({ force: true, announce: true }).catch(() => {});
+  });
   byId('upload-site-picker-trigger').addEventListener('click', () => openSitePicker(SITE_FAVORITE_CONTEXTS.UPLOAD));
   byId('archive-site-picker-trigger').addEventListener('click', () => openSitePicker(SITE_FAVORITE_CONTEXTS.ARCHIVE));
 
@@ -336,7 +484,16 @@ function bindStaticEvents() {
   byId('user-editor-form').addEventListener('submit', saveUserEditor);
 
   window.addEventListener('online', handleOnlineConnection);
-  window.addEventListener('offline', updateConnectionStatus);
+  window.addEventListener('offline', () => {
+    updateConnectionStatus();
+    refreshMediaSyncStatus();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentUser) {
+      refreshMediaSyncStatus();
+      scheduleMediaSynchronization(300);
+    }
+  });
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
@@ -529,6 +686,8 @@ async function handleOnlineConnection() {
     const verifiedUser = await verifyCentralSession();
     if (!verifiedUser) {
       currentUser = null;
+      clearTimeout(mediaSyncTimer);
+      mediaSyncTimer = null;
       sitesCache = [];
       usersCache = [];
       await showCentralAuthScreen({ initialError: 'La sessione non è più valida. Accedi nuovamente.' });
@@ -537,6 +696,8 @@ async function handleOnlineConnection() {
     currentUser = verifiedUser;
     updateCurrentUserUi();
     const syncResult = await refreshMetadata();
+    await refreshMediaSyncStatus();
+    scheduleMediaSynchronization(250);
     if (syncResult?.changed) {
       showToast('Elenco cantieri sincronizzato.', { type: 'success' });
     }
@@ -554,6 +715,8 @@ async function enterApplication(user) {
   updateCurrentUserUi();
   await refreshMetadata();
   setView(VIEW_MODES.UPLOAD, { closeMenu: false });
+  await refreshMediaSyncStatus();
+  scheduleMediaSynchronization(400);
   updateMenuStorage();
   resumeInterruptedDeletions();
 }
@@ -742,7 +905,7 @@ async function deleteSelection() {
     : '';
   const confirmed = await confirmAction({
     title: 'Elimina media',
-    message: `Eliminare definitivamente ${allowed.length} elementi?${deniedNotice}`,
+    message: `Rimuovere dal dispositivo ${allowed.length} elementi? I file gia caricati resteranno nell'archivio OneDrive aziendale.${deniedNotice}`,
     confirmText: 'Elimina',
     danger: true,
   });
@@ -786,6 +949,8 @@ async function handleLogout() {
     return;
   }
   currentUser = null;
+  clearTimeout(mediaSyncTimer);
+  mediaSyncTimer = null;
   sitesCache = [];
   usersCache = [];
   byId('upload-site-select').value = '';
@@ -904,8 +1069,8 @@ async function confirmSiteDeletion(site) {
   try {
     const mediaCount = await getSiteMediaCount(site.id);
     const warning = mediaCount
-      ? `Il cantiere contiene ${mediaCount} media. Verranno eliminati anche file, miniature e preferiti collegati.`
-      : 'Il cantiere non contiene media.';
+      ? `Il cantiere contiene ${mediaCount} media locali. Verranno rimossi dal dispositivo anche file, miniature e preferiti collegati. Le copie gia caricate su OneDrive resteranno archiviate.`
+      : 'Il cantiere non contiene media locali. L eventuale cartella OneDrive restera archiviata.';
     const first = await confirmAction({
       title: 'Elimina cantiere',
       message: `${warning}\nQuesta operazione non puo essere annullata.`,
@@ -1065,15 +1230,17 @@ function updateConnectionStatus() {
 async function updateMenuStorage() {
   const element = byId('storage-summary');
   try {
-    const [estimate, counts, persistent] = await Promise.all([
+    const [estimate, counts, persistent, mediaSync] = await Promise.all([
       getStorageEstimate(),
       getStorageCounts(),
       navigator.storage?.persisted?.() ?? Promise.resolve(false),
+      getMediaSyncSummary(),
     ]);
     const space = estimate?.quota
       ? `${formatBytes(estimate.usage)} di ${formatBytes(estimate.quota)}`
       : 'quota non disponibile';
-    element.textContent = `Spazio: ${space} - ${counts.media} media - ${persistent ? 'persistente' : 'standard'}`;
+    const pending = mediaSync.pending ? ` - ${mediaSync.pending} in attesa OneDrive` : '';
+    element.textContent = `Spazio: ${space} - ${counts.media} media${pending} - ${persistent ? 'persistente' : 'standard'}`;
   } catch {
     element.textContent = 'Spazio: informazioni non disponibili';
   }

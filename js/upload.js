@@ -1,5 +1,5 @@
-import { requestPersistentStorage, saveMediaFile } from './media.js?v=1.6.1';
-import { closeDialog, openDialog, showToast } from './ui.js?v=1.6.1';
+import { requestPersistentStorage, saveMediaFile } from './media.js?v=1.7.0';
+import { closeDialog, openDialog, showToast } from './ui.js?v=1.7.0';
 
 export class UploadController {
   constructor({
@@ -160,7 +160,7 @@ export class UploadController {
     if (saved.length || duplicates.length) {
       const messages = [];
       if (saved.length) {
-        messages.push(saved.length === 1 ? 'Media salvato.' : `${saved.length} media salvati.`);
+        messages.push(saved.length === 1 ? 'Media salvato sul dispositivo.' : `${saved.length} media salvati.`);
       }
       if (duplicates.length) {
         messages.push(

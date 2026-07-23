@@ -14,9 +14,9 @@ In produzione l'app deve essere pubblicata su HTTPS. Non disattivare la Content 
 
 ## Dati e backup
 
-La release 1.6.1 conserva ancora i media su un solo dispositivo e non include sincronizzazione o backup completo. La cancellazione dei dati del sito, il ripristino del telefono o alcune politiche di storage del sistema possono rendere i file irrecuperabili.
+La release 1.7.0 conserva una copia locale e carica gli originali nella cartella OneDrive del cantiere. Finche il riquadro OneDrive non conferma il completamento, la cancellazione dei dati del sito o il ripristino del dispositivo puo rendere irrecuperabile il file non ancora sincronizzato.
 
-Per media aziendali non sostituibili e necessario definire una procedura di backup verificata prima della distribuzione estesa. Una futura integrazione puo aggiungere esportazione cifrata o sincronizzazione opzionale senza modificare il modello offline-first.
+L'URL temporaneo della sessione di caricamento e preautenticato: viene conservato soltanto nella coda IndexedDB per consentire la ripresa, non deve essere copiato, registrato nei log o condiviso. La Content Security Policy limita le destinazioni di rete ai servizi aziendali e agli host OneDrive/SharePoint necessari.
 
 ## Segnalazione problemi
 
@@ -28,13 +28,17 @@ La sessione rimane attiva fino al comando `Esci`. Di conseguenza, chi puo sblocc
 
 ## Impronte dei file
 
-Le impronte SHA-256 servono esclusivamente a riconoscere duplicati esatti all'interno del cantiere selezionato. Non permettono di ricostruire foto o video e non vengono trasmesse fuori dal dispositivo. File visivamente simili ma ricodificati, ritagliati o modificati producono impronte diverse e non vengono considerati duplicati.
+Le impronte SHA-256 servono a riconoscere duplicati esatti nel cantiere selezionato. Non permettono di ricostruire foto o video; vengono inviate al backend aziendale per applicare la deduplicazione centrale tra dispositivi. File visivamente simili ma ricodificati, ritagliati o modificati producono impronte diverse e non vengono considerati duplicati.
 
 
 
-## Accesso centralizzato 1.6.1
+## Accesso centralizzato 1.7.0
 
 - PIN di 6 cifre verificato esclusivamente dal backend Azure.
 - Token di sessione opaco memorizzato localmente; sul server viene conservato solo l'hash.
 - Attivazione tramite codice monouso con scadenza.
 - Ripristino offline consentito solo dopo un primo accesso online riuscito e fino alla scadenza della sessione.
+
+## Eliminazione locale e archivio OneDrive
+
+In questa release l'eliminazione dall'Archivio della PWA rimuove metadati, blob e miniature dal dispositivo, ma non cancella il file gia archiviato su OneDrive. Anche la cancellazione di un cantiere nell'app non elimina automaticamente la relativa cartella OneDrive.

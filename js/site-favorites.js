@@ -1,7 +1,7 @@
-import { getSetting, setSetting } from './db.js?v=1.6.1';
-import { SITE_STATUSES } from './config.js?v=1.6.1';
-import { isConnectivityError } from './remote-auth.js?v=1.6.1';
-import { getRemoteSiteFavorites, putRemoteSiteFavorites } from './site-api.js?v=1.6.1';
+import { getSetting, setSetting } from './db.js?v=1.7.0';
+import { SITE_STATUSES } from './config.js?v=1.7.0';
+import { isConnectivityError } from './remote-auth.js?v=1.7.0';
+import { getRemoteSiteFavorites, putRemoteSiteFavorites } from './site-api.js?v=1.7.0';
 
 export const SITE_FAVORITE_CONTEXTS = Object.freeze({
   ARCHIVE: 'archive',

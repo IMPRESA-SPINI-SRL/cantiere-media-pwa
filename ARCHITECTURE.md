@@ -23,6 +23,8 @@ Cantiere Media e una PWA offline-first collegata a un backend Azure per autentic
 - `filters.js`: stato dei filtri, selezione cantiere condivisa tra caricamento e Archivio e vincoli delle viste.
 - `gallery.js`: gruppi per data, layout a righe, pinch della densita, paginazione, virtualizzazione, miniature lazy e selezione prolungata.
 - `media.js`: validazione file, metadati, miniature, condivisione, download e quota storage.
+- `media-api.js`: richieste autenticate per creare e confermare sessioni di caricamento centrali.
+- `media-sync.js`: coda OneDrive, frammentazione, ripresa, retry e deduplicazione tra dispositivi.
 - `upload.js`: ingressi diretti foto/video/galleria, pipeline sequenziale e avanzamento per file.
 - `viewer.js`: visualizzatore foto/video, doppio tap, pinch, vincoli di trascinamento e controlli video applicativi.
 - `site-favorites.js`: preferenze cantieri personali e indipendenti per Caricamento e Archivio, persistite localmente e sincronizzate nel backend.
@@ -63,6 +65,10 @@ Data e identificatore sono in coda alla chiave composta, consentendo cursori dis
 ### `mediaBlobs`
 
 Chiave: `mediaId`. Contiene il file originale.
+
+### `mediaSync`
+
+Chiave: `mediaId`. Conserva stato, tentativi, prossimo retry, URL temporaneo della sessione, scadenza e offset gia trasferito. Il record viene eliminato atomicamente quando il corrispondente metadato `media` viene marcato `centralSynced`.
 
 ### `thumbnails`
 
@@ -145,9 +151,12 @@ Ogni file segue una pipeline indipendente:
 2. riconoscimento foto/video;
 3. controllo dimensione e durata video;
 4. lettura EXIF JPEG, poi data file, infine data upload;
-5. seconda verifica transazionale e scrittura atomica di metadato e blob;
-6. aggiornamento avanzamento;
-7. passaggio al file successivo anche in caso di file non valido.
+5. seconda verifica transazionale e scrittura atomica di metadato, blob e record `mediaSync`;
+6. aggiornamento avanzamento locale;
+7. passaggio al file successivo anche in caso di file non valido;
+8. quando esiste rete, richiesta al backend della sessione OneDrive;
+9. invio sequenziale di frammenti da 5 MiB e salvataggio dell'offset;
+10. verifica finale backend e rimozione atomica dalla coda.
 
 La miniatura non fa parte della transazione di upload: viene generata soltanto quando serve e puo essere ricreata dall'originale.
 
@@ -159,7 +168,7 @@ La cancellazione di un cantiere usa batch da 100. Prima del primo batch il canti
 
 ## Offline e aggiornamenti
 
-Il Service Worker precachea l'application shell. I media utente restano in IndexedDB e non transitano dalla Cache API.
+Il Service Worker precachea l'application shell. I media utente restano in IndexedDB e non transitano dalla Cache API. La coda OneDrive e indipendente dal Service Worker: riparte quando la PWA torna visibile o online.
 
 Le navigazioni usano rete con timeout e fallback locale; gli asset statici usano cache-first con aggiornamento in background. Il browser verifica il worker con `updateViaCache: none`, attiva la nuova shell, elimina le cache obsolete e provoca un solo reload. Gli aggiornamenti devono essere avviati quando non sono in corso operazioni lunghe.
 

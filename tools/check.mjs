@@ -66,6 +66,8 @@ const databaseSource = await readFile(resolve(root, 'js/db.js'), 'utf8');
 const authSource = await readFile(resolve(root, 'js/auth.js'), 'utf8');
 const remoteAuthSource = await readFile(resolve(root, 'js/remote-auth.js'), 'utf8');
 const uploadSource = await readFile(resolve(root, 'js/upload.js'), 'utf8');
+const mediaApiSource = await readFile(resolve(root, 'js/media-api.js'), 'utf8');
+const mediaSyncSource = await readFile(resolve(root, 'js/media-sync.js'), 'utf8');
 const hashSource = await readFile(resolve(root, 'js/file-hash.js'), 'utf8');
 const indexSource = await readFile(resolve(root, 'index.html'), 'utf8');
 const serviceWorkerSource = await readFile(resolve(root, 'service-worker.js'), 'utf8');
@@ -85,8 +87,8 @@ if (!changelog.includes(`## [${version}]`)) {
   throw new Error('La versione corrente non e registrata in CHANGELOG.md.');
 }
 
-if (!configSource.includes('DB_VERSION = 4')) {
-  throw new Error('La release deve migrare IndexedDB alla versione 4.');
+if (!configSource.includes('DB_VERSION = 5')) {
+  throw new Error('La release deve migrare IndexedDB alla versione 5.');
 }
 if (!remoteAuthSource.includes("SESSION_KEY = 'central-auth-session'")
   || !remoteAuthSource.includes('restoreCentralSession')
@@ -116,6 +118,37 @@ if (!databaseSource.includes("ensureIndex(media, 'siteContentHash', ['siteId', '
 }
 if (!hashSource.includes("digest('SHA-256'") || !uploadSource.includes('duplicati ignorati')) {
   throw new Error('Controllo SHA-256 o feedback duplicati mancante.');
+}
+if (!configSource.includes("MEDIA_SYNC: 'mediaSync'")
+  || !databaseSource.includes('completeMediaCentralSync')
+  || !databaseSource.includes('getMediaSyncQueue')) {
+  throw new Error('Coda IndexedDB per i caricamenti OneDrive incompleta.');
+}
+if (!mediaApiSource.includes('/api/media/upload-session')
+  || !mediaApiSource.includes('/api/media/complete')
+  || !mediaSyncSource.includes("'Content-Range'")
+  || !mediaSyncSource.includes('normalizeChunkSize')
+  || !appSource.includes('scheduleMediaSynchronization')) {
+  throw new Error('Caricamento OneDrive riprendibile o collegamento UI incompleto.');
+}
+for (const requiredMediaSyncId of [
+  'media-sync-card',
+  'media-sync-title',
+  'media-sync-text',
+  'media-sync-progress',
+  'media-sync-retry',
+]) {
+  if (!indexSource.includes(`id="${requiredMediaSyncId}"`)) {
+    throw new Error(`Stato OneDrive mancante: ${requiredMediaSyncId}.`);
+  }
+}
+if (!indexSource.includes('https://*.up.1drv.com')
+  || !indexSource.includes('https://*.sharepoint.com')) {
+  throw new Error('Content Security Policy incompleta per le sessioni di caricamento OneDrive.');
+}
+if (!serviceWorkerSource.includes('./js/media-api.js?v=')
+  || !serviceWorkerSource.includes('./js/media-sync.js?v=')) {
+  throw new Error('Moduli OneDrive mancanti dall application shell.');
 }
 
 if (appSource.includes('deleteMediaCascade')) {
@@ -222,6 +255,8 @@ const required = [
   'repair.html',
   `js/bootstrap-${version}.js`,
   'css/style.css',
+  'js/media-api.js',
+  'js/media-sync.js',
   'README.md',
   'ARCHITECTURE.md',
   'CHANGELOG.md',

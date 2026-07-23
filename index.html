@@ -9,12 +9,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Cantiere Media">
   <meta name="format-detection" content="telephone=no">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://func-cantiere-media-spini-prod-cbaudcavfabuemex.italynorth-01.azurewebsites.net; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://func-cantiere-media-spini-prod-cbaudcavfabuemex.italynorth-01.azurewebsites.net https://*.up.1drv.com https://*.up.sharepoint.com https://*.sharepoint.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>Cantiere Media</title>
-  <link rel="manifest" href="./manifest.json?v=1.6.1">
+  <link rel="manifest" href="./manifest.json?v=1.7.0">
   <link rel="apple-touch-icon" href="./icons/icon-180.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./css/style.css?v=1.6.1">
+  <link rel="stylesheet" href="./css/style.css?v=1.7.0">
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
@@ -148,6 +148,15 @@
           <strong></strong>
           <span></span>
         </div>
+
+        <section id="media-sync-card" class="media-sync-card" aria-live="polite">
+          <div class="media-sync-copy">
+            <strong id="media-sync-title">OneDrive</strong>
+            <span id="media-sync-text">Controllo caricamenti in corso...</span>
+          </div>
+          <progress id="media-sync-progress" max="100" value="0" hidden></progress>
+          <button id="media-sync-retry" class="button button-text" type="button" hidden>Riprova ora</button>
+        </section>
 
         <button id="open-archive-button" class="button button-text upload-home-archive" type="button">
           Consulta l’archivio
@@ -386,6 +395,6 @@
   </div>
   <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 
-  <script type="module" src="./js/bootstrap-1.6.1.js"></script>
+  <script type="module" src="./js/bootstrap-1.7.0.js"></script>
 </body>
 </html>

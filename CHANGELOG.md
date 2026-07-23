@@ -3,21 +3,42 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
-## [1.6.1] - 2026-07-23
+## [1.7.0] - 2026-07-23
 
 ### Aggiunto
 
-- Accesso centralizzato tramite backend Azure Functions.
-- Prima attivazione personale con codice monouso e scelta autonoma del PIN a 6 cifre.
-- Sessione persistente verificata dal servizio aziendale e utilizzabile offline dopo il primo accesso.
-- Registrazione stabile del dispositivo e controllo della sessione al ritorno online.
-- Cache locale dell'elenco utenti per mostrare correttamente la schermata di accesso anche senza rete.
+- Caricamento automatico di foto e video nella cartella OneDrive stabile del cantiere.
+- Coda IndexedDB `mediaSync`, utilizzabile offline e ripresa automaticamente al ritorno della connessione.
+- Sessioni di caricamento riprendibili con frammenti da 5 MiB e recupero dell'offset dopo interruzioni.
+- Stato OneDrive nella schermata principale con avanzamento, file in attesa ed eventuale comando di ripetizione.
+- Deduplicazione centrale per coppia `cantiere + SHA-256`, valida anche tra dispositivi diversi.
+- Migrazione automatica dei media locali gia presenti verso la coda OneDrive.
 
 ### Modificato
 
-- Gli utenti centrali vengono associati ai profili locali esistenti per conservare cantieri, media e preferenze del dispositivo.
-- Limite video allineato ai requisiti aziendali: 3 minuti e 500 MB.
-- Gestione utenti locale nascosta in attesa del pannello amministrativo centralizzato.
+- Schema IndexedDB aggiornato alla versione 5.
+- Il salvataggio resta locale e immediato; la copia OneDrive prosegue separatamente senza bloccare l'uso offline.
+- I file ricevono su OneDrive un nome deterministico basato su data di scatto e impronta.
+- Le conferme di eliminazione precisano che questa release rimuove la copia locale ma conserva il file gia archiviato su OneDrive.
+
+## [1.6.1] - 2026-07-23
+
+### Corretto
+
+- Rimappatura atomica degli identificativi dei cantieri locali, evitando conflitti dell'indice IndexedDB sui nomi.
+
+## [1.6.0] - 2026-07-23
+
+### Aggiunto
+
+- Cantieri centrali condivisi tra dispositivi, con creazione, modifica, eliminazione e coda offline.
+- Migrazione non distruttiva dei cantieri locali e preferiti personali sincronizzati.
+
+## [1.5.0] - 2026-07-23
+
+### Aggiunto
+
+- Accesso centralizzato, prima attivazione personale, PIN a 6 cifre e sessione persistente offline.
 
 ## [1.4.3] - 2026-07-22
 

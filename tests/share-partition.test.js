@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { partitionMediaByType } from '../js/media.js?v=1.6.1';
+import { partitionMediaByType } from '../js/media.js?v=1.7.0';
 
 test('la selezione mista viene separata in foto e video', () => {
   const items = [

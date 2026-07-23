@@ -6,9 +6,9 @@ import {
   MEDIA_FILTERS,
   SITE_STATUSES,
   STORE_NAMES,
-} from './config.js?v=1.6.1';
-import { canDeleteMedia } from './permissions.js?v=1.6.1';
-import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.6.1';
+} from './config.js?v=1.7.0';
+import { canDeleteMedia } from './permissions.js?v=1.7.0';
+import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.7.0';
 
 let databasePromise = null;
 
@@ -33,7 +33,7 @@ function ensureIndex(store, name, keyPath, options = {}) {
   }
 }
 
-function configureSchema(database, transaction) {
+function configureSchema(database, transaction, oldVersion = 0) {
   const users = database.objectStoreNames.contains(STORE_NAMES.USERS)
     ? transaction.objectStore(STORE_NAMES.USERS)
     : database.createObjectStore(STORE_NAMES.USERS, { keyPath: 'id' });
@@ -71,6 +71,41 @@ function configureSchema(database, transaction) {
   ensureIndex(media, 'allAuthorDate', ['authorId', 'takenAt', 'id']);
   ensureIndex(media, 'allTypeAuthorDate', ['mediaType', 'authorId', 'takenAt', 'id']);
 
+  const mediaSync = database.objectStoreNames.contains(STORE_NAMES.MEDIA_SYNC)
+    ? transaction.objectStore(STORE_NAMES.MEDIA_SYNC)
+    : database.createObjectStore(STORE_NAMES.MEDIA_SYNC, { keyPath: 'mediaId' });
+  ensureIndex(mediaSync, 'status', 'status');
+  ensureIndex(mediaSync, 'nextAttemptAt', 'nextAttemptAt');
+  ensureIndex(mediaSync, 'updatedAt', 'updatedAt');
+
+  if (oldVersion < 5) {
+    const migrationRequest = media.openCursor();
+    migrationRequest.onsuccess = () => {
+      const cursor = migrationRequest.result;
+      if (!cursor) return;
+      const item = cursor.value;
+      if (!item.centralSynced) {
+        const timestamp = Number(item.createdAt || item.uploadDate) || Date.now();
+        mediaSync.put({
+          mediaId: item.id,
+          siteId: item.siteId,
+          fileName: item.fileName || '',
+          size: Number(item.size || 0),
+          status: 'pending',
+          attemptCount: 0,
+          nextAttemptAt: 0,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          uploadedBytes: 0,
+          uploadUrl: '',
+          uploadExpiresAt: '',
+          lastError: '',
+        });
+      }
+      cursor.continue();
+    };
+  }
+
   if (!database.objectStoreNames.contains(STORE_NAMES.MEDIA_BLOBS)) {
     database.createObjectStore(STORE_NAMES.MEDIA_BLOBS, { keyPath: 'mediaId' });
   }
@@ -102,7 +137,7 @@ export function openDatabase() {
 
   databasePromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => configureSchema(request.result, request.transaction);
+    request.onupgradeneeded = (event) => configureSchema(request.result, request.transaction, event.oldVersion);
     request.onsuccess = () => {
       const database = request.result;
       database.onversionchange = () => database.close();
@@ -207,6 +242,7 @@ export async function remapSiteIdAtomic(oldId, newId) {
     [
       STORE_NAMES.SITES,
       STORE_NAMES.MEDIA,
+      STORE_NAMES.MEDIA_SYNC,
       STORE_NAMES.FAVORITES,
       STORE_NAMES.SETTINGS,
     ],
@@ -214,6 +250,7 @@ export async function remapSiteIdAtomic(oldId, newId) {
   );
   const sites = transaction.objectStore(STORE_NAMES.SITES);
   const media = transaction.objectStore(STORE_NAMES.MEDIA);
+  const mediaSync = transaction.objectStore(STORE_NAMES.MEDIA_SYNC);
   const favorites = transaction.objectStore(STORE_NAMES.FAVORITES);
   const settings = transaction.objectStore(STORE_NAMES.SETTINGS);
   const oldRequest = sites.get(oldId);
@@ -242,6 +279,16 @@ export async function remapSiteIdAtomic(oldId, newId) {
         const cursor = mediaRequest.result;
         if (!cursor) return;
         cursor.update({ ...cursor.value, siteId: newId });
+        cursor.continue();
+      };
+
+      const mediaSyncRequest = mediaSync.openCursor();
+      mediaSyncRequest.onsuccess = () => {
+        const cursor = mediaSyncRequest.result;
+        if (!cursor) return;
+        if (cursor.value.siteId === oldId) {
+          cursor.update({ ...cursor.value, siteId: newId, updatedAt: Date.now() });
+        }
         cursor.continue();
       };
 
@@ -340,6 +387,7 @@ export async function putMediaWithBlob(metadata, blob) {
       STORE_NAMES.SITES,
       STORE_NAMES.MEDIA,
       STORE_NAMES.MEDIA_BLOBS,
+      STORE_NAMES.MEDIA_SYNC,
     ],
     'readwrite',
   );
@@ -347,6 +395,7 @@ export async function putMediaWithBlob(metadata, blob) {
   const sites = transaction.objectStore(STORE_NAMES.SITES);
   const media = transaction.objectStore(STORE_NAMES.MEDIA);
   const mediaBlobs = transaction.objectStore(STORE_NAMES.MEDIA_BLOBS);
+  const mediaSync = transaction.objectStore(STORE_NAMES.MEDIA_SYNC);
   const siteRequest = sites.get(metadata.siteId);
   const userRequest = users.get(metadata.authorId);
   let siteLoaded = false;
@@ -385,6 +434,21 @@ export async function putMediaWithBlob(metadata, blob) {
         }
       };
       mediaBlobs.add({ mediaId: metadata.id, blob });
+      mediaSync.add({
+        mediaId: metadata.id,
+        siteId: metadata.siteId,
+        fileName: metadata.fileName || '',
+        size: Number(metadata.size || 0),
+        status: 'pending',
+        attemptCount: 0,
+        nextAttemptAt: 0,
+        createdAt: metadata.createdAt || Date.now(),
+        updatedAt: Date.now(),
+        uploadedBytes: 0,
+        uploadUrl: '',
+        uploadExpiresAt: '',
+        lastError: '',
+      });
     };
 
     siteRequest.onsuccess = () => {
@@ -583,6 +647,117 @@ export async function getMediaBlob(mediaId) {
   return record?.blob ?? null;
 }
 
+export async function getMediaSyncQueue({ now = Date.now(), limit = LIMITS.MEDIA_SYNC_BATCH_SIZE } = {}) {
+  const records = await getAllRecords(STORE_NAMES.MEDIA_SYNC);
+  return records
+    .filter((record) => Number(record.nextAttemptAt || 0) <= now)
+    .sort((left, right) => {
+      const leftTime = Number(left.createdAt || left.updatedAt || 0);
+      const rightTime = Number(right.createdAt || right.updatedAt || 0);
+      return leftTime - rightTime;
+    })
+    .slice(0, limit);
+}
+
+export async function getMediaSyncSummary() {
+  const records = await getAllRecords(STORE_NAMES.MEDIA_SYNC);
+  return records.reduce((summary, record) => {
+    summary.pending += 1;
+    summary.totalBytes += Number(record.size || 0);
+    summary.uploadedBytes += Math.min(Number(record.uploadedBytes || 0), Number(record.size || 0));
+    if (record.status === 'failed') summary.failed += 1;
+    if (record.status === 'uploading') summary.uploading += 1;
+    const nextAttemptAt = Number(record.nextAttemptAt || 0);
+    if (nextAttemptAt > 0 && (!summary.nextAttemptAt || nextAttemptAt < summary.nextAttemptAt)) {
+      summary.nextAttemptAt = nextAttemptAt;
+    }
+    return summary;
+  }, {
+    pending: 0,
+    failed: 0,
+    uploading: 0,
+    totalBytes: 0,
+    uploadedBytes: 0,
+    nextAttemptAt: 0,
+  });
+}
+
+export async function updateMediaSyncRecord(mediaId, patch) {
+  const database = await openDatabase();
+  const transaction = database.transaction(STORE_NAMES.MEDIA_SYNC, 'readwrite');
+  const store = transaction.objectStore(STORE_NAMES.MEDIA_SYNC);
+  let result = null;
+
+  return new Promise((resolve, reject) => {
+    const request = store.get(mediaId);
+    request.onsuccess = () => {
+      const existing = request.result;
+      if (!existing) return;
+      result = {
+        ...existing,
+        ...patch,
+        mediaId,
+        updatedAt: Date.now(),
+      };
+      store.put(result);
+    };
+    request.onerror = () => transaction.abort();
+    transaction.oncomplete = () => resolve(result);
+    transaction.onabort = () => reject(
+      transaction.error ?? new Error('Aggiornamento della coda OneDrive non riuscito.'),
+    );
+    transaction.onerror = () => {
+      // The abort handler reports the final transaction error.
+    };
+  });
+}
+
+export async function deleteMediaSyncRecord(mediaId) {
+  return deleteRecord(STORE_NAMES.MEDIA_SYNC, mediaId);
+}
+
+export async function completeMediaCentralSync(mediaId, remoteMedia = {}) {
+  const database = await openDatabase();
+  const transaction = database.transaction(
+    [STORE_NAMES.MEDIA, STORE_NAMES.MEDIA_SYNC],
+    'readwrite',
+  );
+  const media = transaction.objectStore(STORE_NAMES.MEDIA);
+  const mediaSync = transaction.objectStore(STORE_NAMES.MEDIA_SYNC);
+  let completed = null;
+
+  return new Promise((resolve, reject) => {
+    const request = media.get(mediaId);
+    request.onsuccess = () => {
+      const existing = request.result;
+      if (existing) {
+        completed = {
+          ...existing,
+          centralSynced: true,
+          centralStatus: remoteMedia.status || 'completed',
+          centralContentHash: remoteMedia.contentHash || existing.contentHash,
+          driveItemId: remoteMedia.driveItemId || '',
+          oneDriveFileName: remoteMedia.driveItemName || remoteMedia.oneDriveName || '',
+          oneDriveFolderName: remoteMedia.oneDriveFolderName || '',
+          oneDriveWebUrl: remoteMedia.webUrl || '',
+          centralCompletedAt: remoteMedia.completedAt || new Date().toISOString(),
+          centralSyncedAt: Date.now(),
+        };
+        media.put(completed);
+      }
+      mediaSync.delete(mediaId);
+    };
+    request.onerror = () => transaction.abort();
+    transaction.oncomplete = () => resolve(completed);
+    transaction.onabort = () => reject(
+      transaction.error ?? new Error('Conferma del caricamento OneDrive non riuscita.'),
+    );
+    transaction.onerror = () => {
+      // The abort handler reports the final transaction error.
+    };
+  });
+}
+
 export async function getThumbnailBlob(mediaId) {
   const record = await getRecord(STORE_NAMES.THUMBNAILS, mediaId);
   return record?.blob ?? null;
@@ -655,6 +830,7 @@ export async function deleteMediaCascade(ids) {
     [
       STORE_NAMES.MEDIA,
       STORE_NAMES.MEDIA_BLOBS,
+      STORE_NAMES.MEDIA_SYNC,
       STORE_NAMES.THUMBNAILS,
       STORE_NAMES.FAVORITES,
     ],
@@ -662,6 +838,7 @@ export async function deleteMediaCascade(ids) {
   );
   const mediaStore = transaction.objectStore(STORE_NAMES.MEDIA);
   const blobStore = transaction.objectStore(STORE_NAMES.MEDIA_BLOBS);
+  const mediaSyncStore = transaction.objectStore(STORE_NAMES.MEDIA_SYNC);
   const thumbnailStore = transaction.objectStore(STORE_NAMES.THUMBNAILS);
   const favoriteStore = transaction.objectStore(STORE_NAMES.FAVORITES);
   const favoriteMediaIndex = favoriteStore.index('mediaId');
@@ -669,6 +846,7 @@ export async function deleteMediaCascade(ids) {
   for (const mediaId of uniqueIds) {
     mediaStore.delete(mediaId);
     blobStore.delete(mediaId);
+    mediaSyncStore.delete(mediaId);
     thumbnailStore.delete(mediaId);
 
     const cursorRequest = favoriteMediaIndex.openKeyCursor(IDBKeyRange.only(mediaId));
@@ -695,6 +873,7 @@ export async function deleteMediaAuthorizedBatch(actorId, ids, now = Date.now())
       STORE_NAMES.USERS,
       STORE_NAMES.MEDIA,
       STORE_NAMES.MEDIA_BLOBS,
+      STORE_NAMES.MEDIA_SYNC,
       STORE_NAMES.THUMBNAILS,
       STORE_NAMES.FAVORITES,
     ],
@@ -703,6 +882,7 @@ export async function deleteMediaAuthorizedBatch(actorId, ids, now = Date.now())
   const users = transaction.objectStore(STORE_NAMES.USERS);
   const media = transaction.objectStore(STORE_NAMES.MEDIA);
   const mediaBlobs = transaction.objectStore(STORE_NAMES.MEDIA_BLOBS);
+  const mediaSync = transaction.objectStore(STORE_NAMES.MEDIA_SYNC);
   const thumbnails = transaction.objectStore(STORE_NAMES.THUMBNAILS);
   const favorites = transaction.objectStore(STORE_NAMES.FAVORITES);
   const favoriteMediaIndex = favorites.index('mediaId');
@@ -742,6 +922,7 @@ export async function deleteMediaAuthorizedBatch(actorId, ids, now = Date.now())
         result.deleted.push(entry.mediaId);
         media.delete(entry.mediaId);
         mediaBlobs.delete(entry.mediaId);
+        mediaSync.delete(entry.mediaId);
         thumbnails.delete(entry.mediaId);
         const cursorRequest = favoriteMediaIndex.openKeyCursor(IDBKeyRange.only(entry.mediaId));
         cursorRequest.onsuccess = () => {

@@ -1,4 +1,4 @@
-import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.6.1';
+import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.7.0';
 import {
   deleteMediaCascade,
   deleteRecord,
@@ -10,21 +10,21 @@ import {
   putRecord,
   remapSiteIdAtomic,
   setSetting,
-} from './db.js?v=1.6.1';
-import { isConnectivityError } from './remote-auth.js?v=1.6.1';
+} from './db.js?v=1.7.0';
+import { isConnectivityError } from './remote-auth.js?v=1.7.0';
 import {
   createRemoteSite,
   deleteRemoteSite,
   importLocalSites,
   listRemoteSites,
   updateRemoteSite,
-} from './site-api.js?v=1.6.1';
+} from './site-api.js?v=1.7.0';
 import {
   getSiteFavoriteIds,
   setSiteFavoriteIds,
   SITE_FAVORITE_CONTEXTS,
   synchronizeSiteFavorites,
-} from './site-favorites.js?v=1.6.1';
+} from './site-favorites.js?v=1.7.0';
 
 const MIGRATION_KEY_PREFIX = 'central-sites-migrated::';
 let syncPromise = null;

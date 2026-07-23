@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Cantiere Media",
   "short_name": "Cantieri",
-  "description": "Gestione offline di foto e video dei cantieri.",
+  "description": "Foto e video di cantiere offline con copia automatica su OneDrive.",
   "lang": "it",
   "dir": "ltr",
   "start_url": "./index.html",

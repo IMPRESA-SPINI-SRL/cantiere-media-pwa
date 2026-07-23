@@ -224,6 +224,25 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 .upload-home-feedback strong { color: var(--text); font-size: 0.9rem; }
 .upload-home-feedback.is-success { background: #e4f3eb; color: #245b41; }
+.media-sync-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text-muted);
+}
+.media-sync-copy { display: grid; gap: 3px; }
+.media-sync-copy strong { color: var(--text); font-size: 0.9rem; }
+.media-sync-copy span { font-size: 0.82rem; line-height: 1.4; overflow-wrap: anywhere; }
+.media-sync-card progress { width: 100%; accent-color: var(--accent); }
+.media-sync-card.is-syncing { border-color: rgba(201, 40, 50, 0.28); background: var(--accent-soft); }
+.media-sync-card.is-complete { background: #e4f3eb; border-color: #b9dfca; color: #245b41; }
+.media-sync-card.is-warning { background: #fff4d6; border-color: #ead18a; color: #6e5414; }
+.media-sync-card.is-error { background: #fde7e7; border-color: #e3b4b4; color: #7b2424; }
+.media-sync-card .button { justify-self: start; padding-left: 0; }
 .upload-home-archive { width: 100%; margin-top: 8px; }
 
 
@@ -792,7 +811,7 @@ dialog::backdrop { background: rgba(10, 16, 14, 0.55); backdrop-filter: blur(2px
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
-/* Accesso centralizzato - versione 1.6.1 */
+/* Accesso centralizzato - versione 1.7.0 */
 .auth-status,
 .auth-user-status {
   margin: 10px 0 0;
