@@ -1,5 +1,5 @@
-import { requestPersistentStorage, saveMediaFile } from './media.js?v=1.7.0';
-import { closeDialog, openDialog, showToast } from './ui.js?v=1.7.0';
+import { requestPersistentStorage, saveMediaFile } from './media.js?v=1.8.1';
+import { closeDialog, openDialog, showToast } from './ui.js?v=1.8.1';
 
 export class UploadController {
   constructor({

@@ -23,8 +23,9 @@ Cantiere Media e una PWA offline-first collegata a un backend Azure per autentic
 - `filters.js`: stato dei filtri, selezione cantiere condivisa tra caricamento e Archivio e vincoli delle viste.
 - `gallery.js`: gruppi per data, layout a righe, pinch della densita, paginazione, virtualizzazione, miniature lazy e selezione prolungata.
 - `media.js`: validazione file, metadati, miniature, condivisione, download e quota storage.
-- `media-api.js`: richieste autenticate per creare e confermare sessioni di caricamento centrali.
+- `media-api.js`: richieste autenticate per caricamento, feed modifiche, accesso temporaneo ed eliminazione dei media centrali.
 - `media-sync.js`: coda OneDrive, frammentazione, ripresa, retry e deduplicazione tra dispositivi.
+- `central-media-sync.js`: sincronizzazione incrementale dei metadati dell'archivio aziendale e applicazione dei record eliminati o mancanti.
 - `upload.js`: ingressi diretti foto/video/galleria, pipeline sequenziale e avanzamento per file.
 - `viewer.js`: visualizzatore foto/video, doppio tap, pinch, vincoli di trascinamento e controlli video applicativi.
 - `site-favorites.js`: preferenze cantieri personali e indipendenti per Caricamento e Archivio, persistite localmente e sincronizzate nel backend.
@@ -64,7 +65,7 @@ Data e identificatore sono in coda alla chiave composta, consentendo cursori dis
 
 ### `mediaBlobs`
 
-Chiave: `mediaId`. Contiene il file originale.
+Chiave: `mediaId`. Contiene il file originale soltanto quando il media e stato acquisito o scaricato sul dispositivo. Un record `media` con `centralOnly: true` puo esistere senza blob locale e viene aperto tramite OneDrive.
 
 ### `mediaSync`
 
@@ -100,12 +101,14 @@ Dopo il salvataggio, i contatori e il messaggio della schermata vengono aggiorna
 1. l'utente apre l'Archivio;
 2. il controller filtri restituisce cantiere, tipo, autore, data e vista;
 3. senza cantiere la query non parte;
-4. il query planner sceglie l'indice piu selettivo compatibile;
-5. IndexedDB apre un cursore `prev` entro il solo prefisso richiesto;
-6. vengono letti al massimo 60 metadati;
-7. la chiave dell'ultimo record diventa il cursore successivo;
-8. i metadati sono trasformati in righe di data e righe di miniature;
-9. il DOM mostra soltanto le righe vicine al viewport.
+4. quando c'e rete, `central-media-sync.js` richiede soltanto le modifiche successive al checkpoint locale;
+5. i record centrali vengono uniti tramite l'indice univoco `siteContentHash`, mentre eliminazioni e file mancanti vengono rimossi a cascata;
+6. il query planner sceglie l'indice piu selettivo compatibile;
+7. IndexedDB apre un cursore `prev` entro il solo prefisso richiesto;
+8. vengono letti al massimo 60 metadati;
+9. la chiave dell'ultimo record diventa il cursore successivo;
+10. i metadati sono trasformati in righe di data e righe di miniature;
+11. il DOM mostra soltanto le righe vicine al viewport.
 
 Non esiste un percorso `getAll(media) -> filter()`.
 

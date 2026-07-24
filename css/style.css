@@ -628,7 +628,8 @@ dialog::backdrop { background: rgba(10, 16, 14, 0.55); backdrop-filter: blur(2px
 .viewer-transform { width: 100%; height: 100%; display: grid; place-items: center; transform-origin: center; will-change: transform; }
 .viewer-transform.is-settling { transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 .viewer-transform.is-video { touch-action: manipulation; }
-.viewer-image, .viewer-video { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.viewer-image, .viewer-video { display: block; object-fit: contain; }
+.viewer-image { max-width: 100%; max-height: 100%; width: auto; height: auto; flex: 0 0 auto; }
 .viewer-video {
   width: 100%;
   height: 100%;
@@ -637,6 +638,48 @@ dialog::backdrop { background: rgba(10, 16, 14, 0.55); backdrop-filter: blur(2px
   outline: 0;
 }
 .viewer-video:focus-visible { outline: 3px solid rgba(255,255,255,0.72); outline-offset: -5px; }
+.viewer-photo-controls {
+  position: absolute;
+  z-index: 31;
+  left: 50%;
+  bottom: calc(58px + var(--safe-bottom));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,0.24);
+  border-radius: 999px;
+  background: rgba(0,0,0,0.78);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.38);
+  transform: translateX(-50%);
+}
+.viewer-photo-control-button,
+.viewer-photo-fit-button {
+  min-width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+}
+.viewer-photo-control-button { padding: 0; font-size: 1.55rem; line-height: 1; }
+.viewer-photo-fit-button { min-width: 86px; font-size: 0.82rem; }
+.viewer-photo-control-button:hover,
+.viewer-photo-control-button:focus-visible,
+.viewer-photo-fit-button:hover,
+.viewer-photo-fit-button:focus-visible {
+  background: rgba(255,255,255,0.3);
+  outline: 3px solid rgba(255,255,255,0.72);
+  outline-offset: 2px;
+}
+.viewer-photo-control-button:disabled,
+.viewer-photo-fit-button:disabled { opacity: 0.48; cursor: default; }
+
 .viewer-video-center-toggle {
   position: absolute;
   z-index: 30;
@@ -745,6 +788,9 @@ dialog::backdrop { background: rgba(10, 16, 14, 0.55); backdrop-filter: blur(2px
   pointer-events: none;
 }
 @media (max-width: 420px) {
+  .viewer-photo-controls { bottom: calc(54px + var(--safe-bottom)); gap: 5px; padding: 5px; }
+  .viewer-photo-control-button { min-width: 38px; width: 38px; height: 38px; }
+  .viewer-photo-fit-button { min-width: 76px; height: 38px; padding-inline: 9px; }
   .viewer-video-controls { grid-template-columns: 44px minmax(60px, 1fr) auto; gap: 7px; padding-inline: calc(8px + var(--safe-left)) calc(8px + var(--safe-right)); }
   .viewer-video-time { min-width: 70px; font-size: 0.7rem; }
 }
@@ -811,7 +857,7 @@ dialog::backdrop { background: rgba(10, 16, 14, 0.55); backdrop-filter: blur(2px
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
-/* Accesso centralizzato - versione 1.7.0 */
+/* Accesso centralizzato - versione 1.8.1 */
 .auth-status,
 .auth-user-status {
   margin: 10px 0 0;

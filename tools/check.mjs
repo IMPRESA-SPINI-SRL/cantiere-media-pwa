@@ -68,6 +68,9 @@ const remoteAuthSource = await readFile(resolve(root, 'js/remote-auth.js'), 'utf
 const uploadSource = await readFile(resolve(root, 'js/upload.js'), 'utf8');
 const mediaApiSource = await readFile(resolve(root, 'js/media-api.js'), 'utf8');
 const mediaSyncSource = await readFile(resolve(root, 'js/media-sync.js'), 'utf8');
+const centralMediaSyncSource = await readFile(resolve(root, 'js/central-media-sync.js'), 'utf8');
+const mediaSource = await readFile(resolve(root, 'js/media.js'), 'utf8');
+const viewerSource = await readFile(resolve(root, 'js/viewer.js'), 'utf8');
 const hashSource = await readFile(resolve(root, 'js/file-hash.js'), 'utf8');
 const indexSource = await readFile(resolve(root, 'index.html'), 'utf8');
 const serviceWorkerSource = await readFile(resolve(root, 'service-worker.js'), 'utf8');
@@ -149,6 +152,47 @@ if (!indexSource.includes('https://*.up.1drv.com')
 if (!serviceWorkerSource.includes('./js/media-api.js?v=')
   || !serviceWorkerSource.includes('./js/media-sync.js?v=')) {
   throw new Error('Moduli OneDrive mancanti dall application shell.');
+}
+
+if (!mediaApiSource.includes('/api/media/changes')
+  || !mediaApiSource.includes('/api/media/access')
+  || !mediaApiSource.includes('/api/media/delete')
+  || !centralMediaSyncSource.includes('upsertRemoteMediaBatch')
+  || !centralMediaSyncSource.includes('removeRemoteMediaBatch')
+  || !databaseSource.includes('centralOnly')
+  || !appSource.includes('synchronizeCentralMedia(filters.siteId)')) {
+  throw new Error('Archivio aziendale centralizzato o sincronizzazione incrementale incompleti.');
+}
+if (!mediaSource.includes('getMediaPlaybackSource')
+  || !mediaSource.includes('getRemoteMediaAccess')
+  || !viewerSource.includes('getMediaPlaybackSource(media)')) {
+  throw new Error('Apertura dei media centrali o streaming remoto non collegati.');
+}
+if (!mediaSource.includes('deleteRemoteMedia(media)')
+  || appSource.includes('resteranno nell\'archivio OneDrive aziendale')
+  || !appSource.includes('rimossi anche da OneDrive e dagli altri dispositivi')) {
+  throw new Error('Eliminazione centralizzata dei media non collegata correttamente.');
+}
+if (!serviceWorkerSource.includes('./js/central-media-sync.js?v=')) {
+  throw new Error('Modulo archivio aziendale mancante dall application shell.');
+}
+if (!mediaApiSource.includes('/api/media/thumbnail')
+  || !remoteAuthSource.includes('centralApiBlobRequest')
+  || !mediaSource.includes('getRemoteMediaThumbnail')) {
+  throw new Error('Proxy autenticato delle miniature centrali non collegato.');
+}
+for (const requiredViewerControl of ['viewer-photo-controls', 'viewer-zoom-out', 'viewer-fit', 'viewer-zoom-in']) {
+  if (!indexSource.includes(`id="${requiredViewerControl}"`)) {
+    throw new Error(`Controllo foto mancante: ${requiredViewerControl}.`);
+  }
+}
+if (!viewerSource.includes('fitImageElement') || !viewerSource.includes("addEventListener('wheel'")) {
+  throw new Error('Adattamento foto o zoom con rotellina mancante.');
+}
+if (!indexSource.includes("img-src 'self' blob: data: https://*.1drv.com")
+  || !indexSource.includes("media-src 'self' blob: https://*.1drv.com")
+  || !indexSource.includes('https://*.sharepoint-df.com')) {
+  throw new Error('Content Security Policy incompleta per la consultazione dei media centrali.');
 }
 
 if (appSource.includes('deleteMediaCascade')) {
@@ -257,6 +301,7 @@ const required = [
   'css/style.css',
   'js/media-api.js',
   'js/media-sync.js',
+  'js/central-media-sync.js',
   'README.md',
   'ARCHITECTURE.md',
   'CHANGELOG.md',

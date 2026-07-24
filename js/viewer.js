@@ -1,7 +1,7 @@
-import { MEDIA_TYPES } from './config.js?v=1.7.0';
-import { downloadMedia, getMediaFile, shareMediaItems } from './media.js?v=1.7.0';
-import { clamp, formatBytes, formatDateTime, formatDuration } from './utils.js?v=1.7.0';
-import { closeDialog, openDialog, showToast } from './ui.js?v=1.7.0';
+import { MEDIA_TYPES } from './config.js?v=1.8.1';
+import { downloadMedia, getMediaPlaybackSource, shareMediaItems } from './media.js?v=1.8.1';
+import { clamp, formatBytes, formatDateTime, formatDuration } from './utils.js?v=1.8.1';
+import { closeDialog, openDialog, showToast } from './ui.js?v=1.8.1';
 
 const INTERACTIVE_TARGET_SELECTOR = 'button, video, input, select, textarea, a[href], [role="button"]';
 const PLAY_SYMBOL = '▶';
@@ -39,6 +39,7 @@ const MIN_PHOTO_SCALE = 1;
 const MAX_PHOTO_SCALE = 5;
 const DOUBLE_TAP_SCALE = 2.5;
 const RESET_SNAP_SCALE = 1.18;
+const BUTTON_ZOOM_FACTOR = 1.35;
 
 export function getContainedMediaSize(stageWidth, stageHeight, mediaWidth, mediaHeight) {
   const safeStageWidth = Math.max(1, Number(stageWidth) || 1);
@@ -93,6 +94,10 @@ export class ViewerController {
     shareButton,
     position,
     caption,
+    photoControls,
+    zoomOutButton,
+    fitButton,
+    zoomInButton,
     videoCenterButton,
     videoControls,
     videoControlButton,
@@ -111,6 +116,10 @@ export class ViewerController {
       shareButton,
       position,
       caption,
+      photoControls,
+      zoomOutButton,
+      fitButton,
+      zoomInButton,
       videoCenterButton,
       videoControls,
       videoControlButton,
@@ -125,6 +134,7 @@ export class ViewerController {
     this.media = null;
     this.video = null;
     this.objectUrl = null;
+    this.objectUrlRevocable = false;
     this.scale = 1;
     this.translateX = 0;
     this.translateY = 0;
@@ -136,6 +146,7 @@ export class ViewerController {
     this.settleTimer = null;
     this.renderToken = 0;
     this.bindEvents();
+    this.setPhotoUiVisible(false);
     this.setVideoUiVisible(false);
   }
 
@@ -145,6 +156,9 @@ export class ViewerController {
     this.videoCenterButton.addEventListener('click', () => this.toggleVideoPlayback());
     this.videoControlButton.addEventListener('click', () => this.toggleVideoPlayback());
     this.videoProgress.addEventListener('input', () => this.seekCurrentVideo());
+    this.zoomOutButton.addEventListener('click', () => this.zoomBy(1 / BUTTON_ZOOM_FACTOR));
+    this.fitButton.addEventListener('click', () => this.fitCurrentPhoto({ animate: true }));
+    this.zoomInButton.addEventListener('click', () => this.zoomBy(BUTTON_ZOOM_FACTOR));
 
     this.dialog.addEventListener('cancel', (event) => {
       event.preventDefault();
@@ -156,6 +170,10 @@ export class ViewerController {
     this.stage.addEventListener('pointermove', (event) => this.onPointerMove(event));
     this.stage.addEventListener('pointerup', (event) => this.onPointerUp(event));
     this.stage.addEventListener('pointercancel', (event) => this.onPointerUp(event));
+    this.stage.addEventListener('wheel', (event) => this.onWheel(event), { passive: false });
+    window.addEventListener('resize', () => {
+      if (this.dialog.open && this.isPhoto() && this.scale <= 1.001) this.fitCurrentPhoto();
+    });
     document.addEventListener('keydown', (event) => {
       if (!this.dialog.open) return;
       if (event.key === 'ArrowLeft' && !isViewerInteractiveTarget(event.target)) this.navigate(-1);
@@ -181,6 +199,7 @@ export class ViewerController {
     this.revokeObjectUrl();
     this.transform.replaceChildren();
     this.dialog.classList.remove('is-video');
+    this.setPhotoUiVisible(false);
     this.media = null;
     this.index = -1;
     this.resetTransform();
@@ -188,10 +207,9 @@ export class ViewerController {
   }
 
   revokeObjectUrl() {
-    if (this.objectUrl) {
-      URL.revokeObjectURL(this.objectUrl);
-      this.objectUrl = null;
-    }
+    if (this.objectUrl && this.objectUrlRevocable) URL.revokeObjectURL(this.objectUrl);
+    this.objectUrl = null;
+    this.objectUrlRevocable = false;
   }
 
   async showIndex(index) {
@@ -202,6 +220,7 @@ export class ViewerController {
     this.media = media;
     this.resetTransform();
     this.clearVideoState();
+    this.setPhotoUiVisible(false);
     this.revokeObjectUrl();
     this.transform.replaceChildren();
     const isVideo = media.mediaType === MEDIA_TYPES.VIDEO;
@@ -209,9 +228,13 @@ export class ViewerController {
     this.dialog.classList.toggle('is-video', isVideo);
 
     try {
-      const file = await getMediaFile(media);
-      if (token !== this.renderToken || !this.dialog.open) return;
-      this.objectUrl = URL.createObjectURL(file);
+      const source = await getMediaPlaybackSource(media);
+      if (token !== this.renderToken || !this.dialog.open) {
+        if (source.revocable) URL.revokeObjectURL(source.url);
+        return;
+      }
+      this.objectUrl = source.url;
+      this.objectUrlRevocable = Boolean(source.revocable);
       if (isVideo) {
         const video = this.createVideoElement(this.objectUrl);
         this.transform.append(video);
@@ -222,6 +245,11 @@ export class ViewerController {
         image.alt = media.fileName;
         image.draggable = false;
         image.decoding = 'async';
+        image.addEventListener('load', () => {
+          if (token !== this.renderToken || !this.dialog.open) return;
+          this.fitImageElement(image);
+          this.setPhotoUiVisible(true);
+        }, { once: true });
         image.src = this.objectUrl;
         this.transform.append(image);
       }
@@ -287,6 +315,70 @@ export class ViewerController {
 
     this.updateVideoPlaybackUi();
     this.updateVideoTimelineUi();
+  }
+
+  setPhotoUiVisible(visible) {
+    if (this.photoControls) this.photoControls.hidden = !visible;
+    this.dialog?.classList?.toggle('has-photo-controls', visible);
+    if (visible) this.updatePhotoZoomUi();
+  }
+
+  updatePhotoZoomUi() {
+    const fitted = this.scale <= 1.001;
+    if (this.zoomOutButton) this.zoomOutButton.disabled = fitted;
+    if (this.zoomInButton) this.zoomInButton.disabled = this.scale >= MAX_PHOTO_SCALE - 0.001;
+    if (this.fitButton) {
+      this.fitButton.disabled = fitted;
+      this.fitButton.textContent = fitted ? 'Adattata' : 'Adatta';
+    }
+  }
+
+  fitImageElement(image) {
+    if (!image) return;
+    const rect = this.stage.getBoundingClientRect();
+    const naturalWidth = Math.max(1, Number(image.naturalWidth || this.media?.width) || 1);
+    const naturalHeight = Math.max(1, Number(image.naturalHeight || this.media?.height) || 1);
+    const fitted = getContainedMediaSize(rect.width, rect.height, naturalWidth, naturalHeight);
+    image.style.width = `${Math.max(1, Math.floor(fitted.width))}px`;
+    image.style.height = `${Math.max(1, Math.floor(fitted.height))}px`;
+  }
+
+  fitCurrentPhoto({ animate = false } = {}) {
+    const image = this.transform.querySelector('img');
+    if (!image) return;
+    this.fitImageElement(image);
+    this.resetTransform({ animate, clearPointers: false });
+    this.updatePhotoZoomUi();
+  }
+
+  zoomBy(factor, clientX = null, clientY = null) {
+    if (!this.isPhoto()) return;
+    const rect = this.stage.getBoundingClientRect();
+    const focusX = Number.isFinite(clientX) ? clientX : rect.left + rect.width / 2;
+    const focusY = Number.isFinite(clientY) ? clientY : rect.top + rect.height / 2;
+    const nextScale = clamp(this.scale * factor, MIN_PHOTO_SCALE, MAX_PHOTO_SCALE);
+    if (nextScale <= 1.001) {
+      this.resetTransform({ animate: true, clearPointers: false });
+      this.updatePhotoZoomUi();
+      return;
+    }
+    const stageX = focusX - (rect.left + rect.width / 2);
+    const stageY = focusY - (rect.top + rect.height / 2);
+    const previousScale = Math.max(MIN_PHOTO_SCALE, this.scale);
+    const contentX = (stageX - this.translateX) / previousScale;
+    const contentY = (stageY - this.translateY) / previousScale;
+    this.scale = nextScale;
+    this.translateX = stageX - contentX * nextScale;
+    this.translateY = stageY - contentY * nextScale;
+    this.constrainCurrentTransform({ animate: true });
+    this.updatePhotoZoomUi();
+  }
+
+  onWheel(event) {
+    if (!this.dialog.open || !this.isPhoto()) return;
+    event.preventDefault();
+    const factor = Math.exp(-Number(event.deltaY || 0) * 0.0015);
+    this.zoomBy(factor, event.clientX, event.clientY);
   }
 
   setVideoUiVisible(visible) {
@@ -396,6 +488,7 @@ export class ViewerController {
     this.pinchActive = false;
     this.lastTap = null;
     this.applyTransform();
+    this.updatePhotoZoomUi();
   }
 
   beginSettling() {
@@ -436,6 +529,7 @@ export class ViewerController {
     this.translateY = constrained.translateY;
     if (animate) this.beginSettling();
     if (apply) this.applyTransform();
+    this.updatePhotoZoomUi();
   }
 
   onPointerDown(event) {
@@ -580,6 +674,7 @@ export class ViewerController {
     this.translateX = (rect.left + rect.width / 2 - clientX) * (this.scale - 1);
     this.translateY = (rect.top + rect.height / 2 - clientY) * (this.scale - 1);
     this.constrainCurrentTransform({ animate: true });
+    this.updatePhotoZoomUi();
   }
 
   clampTranslation(apply = true) {

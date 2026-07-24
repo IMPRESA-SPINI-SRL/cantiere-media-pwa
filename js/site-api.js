@@ -1,4 +1,4 @@
-import { centralApiRequest } from './remote-auth.js?v=1.7.0';
+import { centralApiRequest } from './remote-auth.js?v=1.8.1';
 
 export async function listRemoteSites() {
   const result = await centralApiRequest('/api/sites');

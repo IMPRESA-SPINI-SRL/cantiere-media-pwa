@@ -6,9 +6,9 @@ import {
   MEDIA_FILTERS,
   SITE_STATUSES,
   STORE_NAMES,
-} from './config.js?v=1.7.0';
-import { canDeleteMedia } from './permissions.js?v=1.7.0';
-import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.7.0';
+} from './config.js?v=1.8.1';
+import { canDeleteMedia } from './permissions.js?v=1.8.1';
+import { endOfLocalDay, startOfLocalDay } from './utils.js?v=1.8.1';
 
 let databasePromise = null;
 
@@ -1065,4 +1065,77 @@ export async function getStorageCounts() {
     media: result[2],
     favorites: result[3],
   };
+}
+
+function remoteTime(value, fallback = Date.now()) {
+  const parsed = Date.parse(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function remoteMediaLocalId(remote) {
+  return `central-${remote.siteId}-${remote.contentHash}`;
+}
+
+function mapRemoteMediaRecord(remote, existing = null) {
+  const completedAt = remoteTime(remote.completedAt || remote.createdAt);
+  const takenAt = remoteTime(remote.takenAt, completedAt);
+  const updatedAt = remoteTime(remote.updatedAt || remote.completedAt, completedAt);
+  const centralOnly = existing ? existing.centralOnly === true : true;
+
+  return {
+    ...(existing || {}),
+    id: existing?.id || remoteMediaLocalId(remote),
+    siteId: remote.siteId,
+    siteNameSnapshot: remote.siteName || existing?.siteNameSnapshot || remote.oneDriveFolderName || '',
+    authorId: remote.authorId || existing?.authorId || '',
+    authorNameSnapshot: remote.authorName || existing?.authorNameSnapshot || '',
+    mediaType: remote.mediaType || existing?.mediaType || 'photo',
+    fileName: remote.fileName || existing?.fileName || remote.driveItemName || remote.oneDriveName || 'media',
+    mimeType: remote.mimeType || existing?.mimeType || 'application/octet-stream',
+    size: Number(remote.size || existing?.size || 0),
+    contentHash: remote.contentHash,
+    width: Number(remote.width || existing?.width || 0),
+    height: Number(remote.height || existing?.height || 0),
+    duration: Number(remote.duration || existing?.duration || 0),
+    takenAt,
+    takenAtSource: existing?.takenAtSource || 'central',
+    uploadDate: Number(existing?.uploadDate) || completedAt,
+    createdAt: Number(existing?.createdAt) || remoteTime(remote.createdAt, completedAt),
+    centralOnly,
+    centralSynced: true,
+    centralStatus: remote.status || 'completed',
+    centralContentHash: remote.contentHash,
+    driveItemId: remote.driveItemId || existing?.driveItemId || '',
+    oneDriveFileName: remote.driveItemName || remote.oneDriveName || existing?.oneDriveFileName || '',
+    oneDriveFolderName: remote.oneDriveFolderName || existing?.oneDriveFolderName || '',
+    oneDriveWebUrl: remote.webUrl || existing?.oneDriveWebUrl || '',
+    centralCompletedAt: remote.completedAt || existing?.centralCompletedAt || '',
+    centralUpdatedAt: remote.updatedAt || '',
+    centralSyncedAt: Date.now(),
+    updatedAt,
+  };
+}
+
+export async function upsertRemoteMediaBatch(items = []) {
+  const completed = [];
+  for (const remote of items) {
+    if (!remote?.siteId || !remote?.contentHash || remote.status !== 'completed') continue;
+    const existing = await getMediaBySiteAndContentHash(remote.siteId, remote.contentHash);
+    const record = mapRemoteMediaRecord(remote, existing || null);
+    await putRecord(STORE_NAMES.MEDIA, record);
+    completed.push(record);
+  }
+  return completed;
+}
+
+export async function removeRemoteMediaBatch(items = []) {
+  const ids = [];
+  for (const remote of items) {
+    if (!remote?.siteId || !remote?.contentHash) continue;
+    const existing = await getMediaBySiteAndContentHash(remote.siteId, remote.contentHash);
+    if (!existing) continue;
+    if (existing.centralSynced === true || existing.centralOnly === true) ids.push(existing.id);
+  }
+  if (ids.length) await deleteMediaCascade(ids);
+  return ids;
 }

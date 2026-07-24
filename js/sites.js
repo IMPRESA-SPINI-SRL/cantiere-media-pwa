@@ -1,4 +1,4 @@
-import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.7.0';
+import { LIMITS, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.8.1';
 import {
   countMediaForSite,
   deleteMediaCascade,
@@ -8,12 +8,12 @@ import {
   getMediaIdsForSite,
   getRecord,
   putRecord,
-} from './db.js?v=1.7.0';
-import { canManageSites } from './permissions.js?v=1.7.0';
-import { isConnectivityError } from './remote-auth.js?v=1.7.0';
-import { createRemoteSite, deleteRemoteSite, updateRemoteSite } from './site-api.js?v=1.7.0';
-import { applyRemoteSite } from './site-sync.js?v=1.7.0';
-import { createId, normalizeText, sleep } from './utils.js?v=1.7.0';
+} from './db.js?v=1.8.1';
+import { canManageSites } from './permissions.js?v=1.8.1';
+import { isConnectivityError } from './remote-auth.js?v=1.8.1';
+import { createRemoteSite, deleteRemoteSite, updateRemoteSite } from './site-api.js?v=1.8.1';
+import { applyRemoteSite } from './site-sync.js?v=1.8.1';
+import { createId, normalizeText, sleep } from './utils.js?v=1.8.1';
 
 async function requireAdministrator(actor) {
   const storedActor = actor?.id ? await getRecord(STORE_NAMES.USERS, actor.id) : null;

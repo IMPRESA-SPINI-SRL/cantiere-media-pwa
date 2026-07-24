@@ -4,7 +4,7 @@ import {
   computeChunkRange,
   normalizeChunkSize,
   parseNextExpectedOffset,
-} from '../js/media-sync.js?v=1.7.0';
+} from '../js/media-sync.js?v=1.8.1';
 
 test('normalizza i frammenti a multipli di 320 KiB', () => {
   assert.equal(normalizeChunkSize(5 * 1024 * 1024), 5 * 1024 * 1024);

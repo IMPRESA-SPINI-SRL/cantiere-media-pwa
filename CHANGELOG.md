@@ -3,6 +3,29 @@
 Tutte le modifiche rilevanti sono registrate in questo file.
 Il progetto usa Semantic Versioning.
 
+## [1.8.1] - 2026-07-24
+
+### Corretto
+
+- Le miniature dei media aziendali vengono recuperate tramite il backend autenticato, evitando i blocchi CORS dei collegamenti temporanei OneDrive.
+- Le fotografie vengono adattate esplicitamente allo spazio visibile, anche quando contengono metadati EXIF di orientamento.
+- Il visualizzatore fotografico aggiunge i comandi `-`, `Adatta`, `+` e lo zoom con rotellina del mouse.
+
+## [1.8.0] - 2026-07-23
+
+### Aggiunto
+
+- Archivio aziendale condiviso: ogni dispositivo autorizzato vede i media caricati dagli altri utenti e dispositivi.
+- Sincronizzazione incrementale dei metadati centrali con checkpoint separati per cantiere e per la vista `Tutti i cantieri`.
+- Miniature remote memorizzate localmente e apertura degli originali OneDrive tramite collegamenti temporanei.
+- Propagazione delle eliminazioni verso OneDrive e gli altri dispositivi.
+
+### Modificato
+
+- La galleria unisce senza duplicazioni media locali e record centrali usando `cantiere + SHA-256`.
+- I file acquisiti sul dispositivo restano consultabili offline; i file presenti solo nell'archivio aziendale richiedono Internet per aprire l'originale.
+- Le regole di eliminazione restano: amministratore sempre, utente normale soltanto i propri caricamenti entro 24 ore.
+
 ## [1.7.0] - 2026-07-23
 
 ### Aggiunto

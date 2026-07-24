@@ -14,9 +14,9 @@ In produzione l'app deve essere pubblicata su HTTPS. Non disattivare la Content 
 
 ## Dati e backup
 
-La release 1.7.0 conserva una copia locale e carica gli originali nella cartella OneDrive del cantiere. Finche il riquadro OneDrive non conferma il completamento, la cancellazione dei dati del sito o il ripristino del dispositivo puo rendere irrecuperabile il file non ancora sincronizzato.
+La release 1.8.1 conserva una copia locale e carica gli originali nella cartella OneDrive del cantiere. Finche il riquadro OneDrive non conferma il completamento, la cancellazione dei dati del sito o il ripristino del dispositivo puo rendere irrecuperabile il file non ancora sincronizzato.
 
-L'URL temporaneo della sessione di caricamento e preautenticato: viene conservato soltanto nella coda IndexedDB per consentire la ripresa, non deve essere copiato, registrato nei log o condiviso. La Content Security Policy limita le destinazioni di rete ai servizi aziendali e agli host OneDrive/SharePoint necessari.
+Gli URL temporanei di caricamento e consultazione sono preautenticati: l'URL di upload viene conservato soltanto nella coda IndexedDB per consentire la ripresa, mentre gli URL di download restano esclusivamente in memoria per pochi minuti. Non devono essere copiati, registrati nei log o condivisi. La Content Security Policy limita le destinazioni di rete ai servizi aziendali e agli host OneDrive/SharePoint necessari.
 
 ## Segnalazione problemi
 
@@ -32,13 +32,13 @@ Le impronte SHA-256 servono a riconoscere duplicati esatti nel cantiere selezion
 
 
 
-## Accesso centralizzato 1.7.0
+## Accesso centralizzato 1.8.1
 
 - PIN di 6 cifre verificato esclusivamente dal backend Azure.
 - Token di sessione opaco memorizzato localmente; sul server viene conservato solo l'hash.
 - Attivazione tramite codice monouso con scadenza.
 - Ripristino offline consentito solo dopo un primo accesso online riuscito e fino alla scadenza della sessione.
 
-## Eliminazione locale e archivio OneDrive
+## Eliminazione nell'archivio aziendale
 
-In questa release l'eliminazione dall'Archivio della PWA rimuove metadati, blob e miniature dal dispositivo, ma non cancella il file gia archiviato su OneDrive. Anche la cancellazione di un cantiere nell'app non elimina automaticamente la relativa cartella OneDrive.
+L'eliminazione di un media sincronizzato richiede una sessione online valida. L'amministratore puo eliminare ogni media; l'utente normale puo eliminare soltanto i propri caricamenti entro 24 ore. Il backend rimuove il file da OneDrive, registra l'operazione nell'audit e pubblica un record di eliminazione che viene applicato dagli altri dispositivi. La cancellazione di un cantiere nell'app non elimina automaticamente la relativa cartella OneDrive.

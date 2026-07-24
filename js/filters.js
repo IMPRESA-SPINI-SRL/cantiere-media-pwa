@@ -1,4 +1,4 @@
-import { ALL_SITES_ID, MEDIA_FILTERS, SITE_STATUSES, VIEW_MODES } from './config.js?v=1.7.0';
+import { ALL_SITES_ID, MEDIA_FILTERS, SITE_STATUSES, VIEW_MODES } from './config.js?v=1.8.1';
 
 export function viewModeLabel(viewMode) {
   return viewMode === VIEW_MODES.ARCHIVE ? 'Archivio' : 'Carica';

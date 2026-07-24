@@ -9,12 +9,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Cantiere Media">
   <meta name="format-detection" content="telephone=no">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://func-cantiere-media-spini-prod-cbaudcavfabuemex.italynorth-01.azurewebsites.net https://*.up.1drv.com https://*.up.sharepoint.com https://*.sharepoint.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://*.1drv.com https://*.sharepoint.com https://*.sharepoint-df.com; media-src 'self' blob: https://*.1drv.com https://*.sharepoint.com https://*.sharepoint-df.com; connect-src 'self' https://func-cantiere-media-spini-prod-cbaudcavfabuemex.italynorth-01.azurewebsites.net https://*.up.1drv.com https://*.up.sharepoint.com https://*.1drv.com https://*.sharepoint.com https://*.sharepoint-df.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>Cantiere Media</title>
-  <link rel="manifest" href="./manifest.json?v=1.7.0">
+  <link rel="manifest" href="./manifest.json?v=1.8.1">
   <link rel="apple-touch-icon" href="./icons/icon-180.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./css/style.css?v=1.7.0">
+  <link rel="stylesheet" href="./css/style.css?v=1.8.1">
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true" focusable="false">
@@ -379,6 +379,11 @@
       <div id="viewer-stage" class="viewer-stage">
         <div id="viewer-transform" class="viewer-transform"></div>
       </div>
+      <div id="viewer-photo-controls" class="viewer-photo-controls" role="group" aria-label="Controlli zoom fotografia" hidden>
+        <button id="viewer-zoom-out" class="viewer-photo-control-button" type="button" aria-label="Riduci fotografia" title="Riduci">−</button>
+        <button id="viewer-fit" class="viewer-photo-fit-button" type="button" aria-label="Adatta fotografia allo schermo" title="Adatta allo schermo">Adatta</button>
+        <button id="viewer-zoom-in" class="viewer-photo-control-button" type="button" aria-label="Ingrandisci fotografia" title="Ingrandisci">+</button>
+      </div>
       <button id="viewer-video-center-toggle" class="viewer-video-center-toggle" type="button" aria-label="Riproduci video" title="Riproduci video" hidden>▶</button>
       <div id="viewer-video-controls" class="viewer-video-controls" role="group" aria-label="Controlli video" hidden>
         <button id="viewer-video-control-button" class="viewer-video-control-button" type="button" aria-label="Riproduci video" title="Riproduci video">▶</button>
@@ -395,6 +400,6 @@
   </div>
   <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 
-  <script type="module" src="./js/bootstrap-1.7.0.js"></script>
+  <script type="module" src="./js/bootstrap-1.8.1.js"></script>
 </body>
 </html>

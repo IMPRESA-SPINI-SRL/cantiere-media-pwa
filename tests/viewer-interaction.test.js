@@ -252,3 +252,44 @@ test('uno zoom intenzionale sopra la soglia non viene azzerato', () => {
   assert.equal(constrained.translateX, 20);
   assert.equal(constrained.translateY, 20);
 });
+
+
+test('i controlli foto permettono di tornare alla vista adattata', () => {
+  const controller = Object.create(ViewerController.prototype);
+  controller.scale = 2.2;
+  controller.translateX = 90;
+  controller.translateY = -60;
+  controller.pointers = new Map();
+  controller.singleGesture = null;
+  controller.pinchGesture = null;
+  controller.pinchActive = false;
+  controller.lastTap = null;
+  controller.settleTimer = null;
+  controller.media = { mediaType: 'photo' };
+  controller.stage = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }) };
+  controller.zoomOutButton = new FakeElement('button');
+  controller.zoomInButton = new FakeElement('button');
+  controller.fitButton = new FakeElement('button');
+  controller.transform = {
+    style: {},
+    classList: { add() {}, remove() {} },
+    querySelector: () => ({ naturalWidth: 1200, naturalHeight: 1600, style: {} }),
+  };
+
+  controller.fitCurrentPhoto();
+  assert.equal(controller.scale, 1);
+  assert.equal(controller.translateX, 0);
+  assert.equal(controller.translateY, 0);
+  assert.equal(controller.zoomOutButton.disabled, true);
+  assert.equal(controller.fitButton.textContent, 'Adattata');
+});
+
+test('la dimensione iniziale della foto resta contenuta nello schermo', () => {
+  const controller = Object.create(ViewerController.prototype);
+  controller.media = { width: 864, height: 1152 };
+  controller.stage = { getBoundingClientRect: () => ({ width: 1600, height: 900 }) };
+  const image = { naturalWidth: 864, naturalHeight: 1152, style: {} };
+  controller.fitImageElement(image);
+  assert.equal(image.style.width, '675px');
+  assert.equal(image.style.height, '900px');
+});

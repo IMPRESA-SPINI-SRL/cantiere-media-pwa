@@ -18,8 +18,8 @@ test('la release collega sincronizzazione cantieri, API centrale e versione nell
     readFile(new URL('../js/db.js', import.meta.url), 'utf8'),
   ]);
   assert.match(app, /synchronizeSites\(currentUser\)/);
-  assert.match(worker, /site-api\.js\?v=1\.7\.0/);
-  assert.match(worker, /site-sync\.js\?v=1\.7\.0/);
+  assert.match(worker, /site-api\.js\?v=1\.8\.1/);
+  assert.match(worker, /site-sync\.js\?v=1\.8\.1/);
   assert.match(index, /id="auth-version-label"/);
   assert.match(siteSync, /importLegacySites/);
   assert.match(siteSync, /pending-delete/);

@@ -5,8 +5,8 @@ import {
   ROLES,
   SITE_STATUSES,
   VIEW_MODES,
-} from './config.js?v=1.7.0';
-import { updateCurrentUserSnapshot } from './auth.js?v=1.7.0';
+} from './config.js?v=1.8.1';
+import { updateCurrentUserSnapshot } from './auth.js?v=1.8.1';
 import {
   activateCentralUser,
   getLastUsername,
@@ -15,33 +15,34 @@ import {
   logoutCentralUser,
   restoreCentralSession,
   verifyCentralSession,
-} from './remote-auth.js?v=1.7.0';
+} from './remote-auth.js?v=1.8.1';
 import {
   getStorageCounts,
   openDatabase,
-} from './db.js?v=1.7.0';
-import { FilterController, viewModeLabel } from './filters.js?v=1.7.0';
-import { GalleryController } from './gallery.js?v=1.7.0';
+} from './db.js?v=1.8.1';
+import { FilterController, viewModeLabel } from './filters.js?v=1.8.1';
+import { GalleryController } from './gallery.js?v=1.8.1';
 import {
   getSiteFavoriteIds,
   SITE_FAVORITE_CONTEXTS,
   sortSitesByFavorites,
   toggleSiteFavorite,
-} from './site-favorites.js?v=1.7.0';
-import { SitePickerController } from './site-picker.js?v=1.7.0';
-import { synchronizeSites } from './site-sync.js?v=1.7.0';
+} from './site-favorites.js?v=1.8.1';
+import { SitePickerController } from './site-picker.js?v=1.8.1';
+import { synchronizeSites } from './site-sync.js?v=1.8.1';
+import { synchronizeCentralMedia } from './central-media-sync.js?v=1.8.1';
 import {
   downloadMedia,
   deleteMediaItems,
   getStorageEstimate,
   partitionMediaByType,
   shareMediaItems,
-} from './media.js?v=1.7.0';
+} from './media.js?v=1.8.1';
 import {
   getMediaSyncSummary,
   synchronizeMedia,
-} from './media-sync.js?v=1.7.0';
-import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.7.0';
+} from './media-sync.js?v=1.8.1';
+import { isAdministrator, splitMediaByDeletionPermission } from './permissions.js?v=1.8.1';
 import {
   createSite,
   deleteSiteInBatches,
@@ -49,13 +50,13 @@ import {
   listSites,
   resumePendingSiteDeletions,
   updateSite,
-} from './sites.js?v=1.7.0';
-import { UploadController } from './upload.js?v=1.7.0';
+} from './sites.js?v=1.8.1';
+import { UploadController } from './upload.js?v=1.8.1';
 import {
   createUser,
   listUsers,
   updateUser,
-} from './users.js?v=1.7.0';
+} from './users.js?v=1.8.1';
 import {
   byId,
   closeDialog,
@@ -64,9 +65,9 @@ import {
   setBusy,
   showAlert,
   showToast,
-} from './ui.js?v=1.7.0';
-import { debounce, formatBytes } from './utils.js?v=1.7.0';
-import { ViewerController } from './viewer.js?v=1.7.0';
+} from './ui.js?v=1.8.1';
+import { debounce, formatBytes } from './utils.js?v=1.8.1';
+import { ViewerController } from './viewer.js?v=1.8.1';
 
 let currentUser = null;
 let sitesCache = [];
@@ -382,6 +383,12 @@ function initializeControllers() {
     zoomIndicator: byId('gallery-zoom-indicator'),
     onOpen: (index) => viewerController.open(index),
     onSelectionChange: updateSelectionToolbar,
+    beforeReload: async (filters) => {
+      if (!currentUser || !navigator.onLine || !filters?.siteId) return null;
+      const result = await synchronizeCentralMedia(filters.siteId);
+      if (result.changed) updateMenuStorage();
+      return result;
+    },
   });
 
   viewerController = new ViewerController({
@@ -392,6 +399,10 @@ function initializeControllers() {
     shareButton: byId('viewer-share'),
     position: byId('viewer-position'),
     caption: byId('viewer-caption'),
+    photoControls: byId('viewer-photo-controls'),
+    zoomOutButton: byId('viewer-zoom-out'),
+    fitButton: byId('viewer-fit'),
+    zoomInButton: byId('viewer-zoom-in'),
     videoCenterButton: byId('viewer-video-center-toggle'),
     videoControls: byId('viewer-video-controls'),
     videoControlButton: byId('viewer-video-control-button'),
@@ -492,6 +503,9 @@ function bindStaticEvents() {
     if (document.visibilityState === 'visible' && currentUser) {
       refreshMediaSyncStatus();
       scheduleMediaSynchronization(300);
+      if (currentView !== VIEW_MODES.UPLOAD && navigator.onLine) {
+        reloadGallery(filterController.getValue());
+      }
     }
   });
   window.addEventListener('beforeinstallprompt', (event) => {
@@ -698,6 +712,9 @@ async function handleOnlineConnection() {
     const syncResult = await refreshMetadata();
     await refreshMediaSyncStatus();
     scheduleMediaSynchronization(250);
+    if (currentView !== VIEW_MODES.UPLOAD) {
+      await galleryController.reload(filterController.getValue());
+    }
     if (syncResult?.changed) {
       showToast('Elenco cantieri sincronizzato.', { type: 'success' });
     }
@@ -900,18 +917,25 @@ async function deleteSelection() {
     return;
   }
 
+  const centralItems = allowed.filter((media) => media.centralSynced === true || media.centralOnly === true);
+  if (centralItems.length && !navigator.onLine) {
+    showToast('Per eliminare file già sincronizzati serve una connessione Internet.', { type: 'warning' });
+    return;
+  }
+
   const deniedNotice = denied.length
-    ? `\n${denied.length} elementi non verranno eliminati perche non autorizzati.`
+    ? `
+${denied.length} elementi non verranno eliminati perche non autorizzati.`
     : '';
   const confirmed = await confirmAction({
-    title: 'Elimina media',
-    message: `Rimuovere dal dispositivo ${allowed.length} elementi? I file gia caricati resteranno nell'archivio OneDrive aziendale.${deniedNotice}`,
+    title: 'Elimina definitivamente',
+    message: `Eliminare definitivamente ${allowed.length} elementi dall'archivio aziendale? I file sincronizzati saranno rimossi anche da OneDrive e dagli altri dispositivi.${deniedNotice}`,
     confirmText: 'Elimina',
     danger: true,
   });
   if (!confirmed) return;
 
-  setBusy(true, 'Eliminazione media...');
+  setBusy(true, 'Eliminazione dall’archivio aziendale...');
   try {
     const result = await deleteMediaItems(currentUser, allowed.map((media) => media.id));
     galleryController.clearSelection();

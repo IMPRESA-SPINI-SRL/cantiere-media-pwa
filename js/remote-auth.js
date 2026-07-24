@@ -1,4 +1,4 @@
-import { API_BASE_URL, ROLES, STORE_NAMES } from './config.js?v=1.7.0';
+import { API_BASE_URL, ROLES, STORE_NAMES } from './config.js?v=1.8.1';
 import {
   deleteSetting,
   getAllRecords,
@@ -6,9 +6,9 @@ import {
   getSetting,
   putRecord,
   setSetting,
-} from './db.js?v=1.7.0';
-import { normalizeText } from './utils.js?v=1.7.0';
-import { toPublicUser } from './auth.js?v=1.7.0';
+} from './db.js?v=1.8.1';
+import { normalizeText } from './utils.js?v=1.8.1';
+import { toPublicUser } from './auth.js?v=1.8.1';
 
 const SESSION_KEY = 'central-auth-session';
 const CACHED_USERS_KEY = 'central-auth-users';
@@ -86,6 +86,54 @@ async function apiRequest(path, {
       throw new CentralAuthError('Il servizio non risponde. Controlla la connessione.', 'NETWORK_ERROR');
     }
     throw new CentralAuthError('Impossibile raggiungere il servizio. Controlla la connessione.', 'NETWORK_ERROR');
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function apiBlobRequest(path, {
+  method = 'GET',
+  body,
+  token,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+} = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const headers = { Accept: 'application/octet-stream, image/*' };
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(endpoint(path), {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      let payload = null;
+      try {
+        payload = await response.clone().json();
+      } catch {
+        payload = null;
+      }
+      throw new CentralAuthError(
+        payload?.error ?? 'Il servizio media non ha risposto correttamente.',
+        payload?.code ?? `HTTP_${response.status}`,
+        { status: response.status, payload },
+      );
+    }
+
+    return response.blob();
+  } catch (error) {
+    if (error instanceof CentralAuthError) throw error;
+    if (error?.name === 'AbortError') {
+      throw new CentralAuthError('Il recupero del file non risponde. Controlla la connessione.', 'NETWORK_ERROR');
+    }
+    throw new CentralAuthError('Impossibile raggiungere il servizio media. Controlla la connessione.', 'NETWORK_ERROR');
   } finally {
     clearTimeout(timer);
   }
@@ -200,6 +248,14 @@ export async function centralApiRequest(path, options = {}) {
     throw new CentralAuthError('Sessione non valida o scaduta.', 'SESSION_INVALID');
   }
   return apiRequest(path, { ...options, token: session.token });
+}
+
+export async function centralApiBlobRequest(path, options = {}) {
+  const session = await getSetting(SESSION_KEY, null);
+  if (!session?.token || isSessionExpired(session)) {
+    throw new CentralAuthError('Sessione non valida o scaduta.', 'SESSION_INVALID');
+  }
+  return apiBlobRequest(path, { ...options, token: session.token });
 }
 
 export async function listCentralUsers({ allowCache = true } = {}) {

@@ -1,6 +1,6 @@
-import { LIMITS, MEDIA_TYPES } from './config.js?v=1.7.0';
-import { queryMediaPage } from './db.js?v=1.7.0';
-import { getOrCreateThumbnail, mediaDescription } from './media.js?v=1.7.0';
+import { LIMITS, MEDIA_TYPES } from './config.js?v=1.8.1';
+import { queryMediaPage } from './db.js?v=1.8.1';
+import { getOrCreateThumbnail, mediaDescription } from './media.js?v=1.8.1';
 
 const LONG_PRESS_MS = 480;
 const MOVE_TOLERANCE = 12;
@@ -176,6 +176,7 @@ export class GalleryController {
     getUser,
     onOpen,
     onSelectionChange,
+    beforeReload = null,
   }) {
     Object.assign(this, {
       container,
@@ -186,6 +187,7 @@ export class GalleryController {
       getUser,
       onOpen,
       onSelectionChange,
+      beforeReload,
     });
     this.items = [];
     this.itemById = new Map();
@@ -255,7 +257,7 @@ export class GalleryController {
     return this.items.filter((item) => this.selectedIds.has(item.id));
   }
 
-  async reload(filters) {
+  async reload(filters, { skipCentralSync = false } = {}) {
     this.loadToken += 1;
     this.filters = { ...filters };
     this.loadingPromise = null;
@@ -273,9 +275,31 @@ export class GalleryController {
       return;
     }
 
-    this.setStatus('Caricamento...');
+    const token = this.loadToken;
+    this.setStatus('Caricamento archivio locale...');
     this.sentinel.hidden = false;
     await this.loadNextPage();
+    if (token !== this.loadToken || skipCentralSync || !this.beforeReload) return;
+
+    if (navigator.onLine && !this.items.length) {
+      this.setStatus('Aggiornamento archivio aziendale...');
+    }
+    try {
+      const result = await this.beforeReload(this.filters);
+      if (token !== this.loadToken) return;
+      if (result?.changed) {
+        await this.reload(this.filters, { skipCentralSync: true });
+      } else if (!this.items.length) {
+        this.setStatus('Nessun media per i filtri selezionati.');
+      }
+    } catch (error) {
+      console.warn('Aggiornamento archivio aziendale non completato.', error);
+      if (token === this.loadToken && !this.items.length) {
+        this.setStatus(navigator.onLine
+          ? 'Archivio aziendale non aggiornato. Riprova tra poco.'
+          : 'Nessun media locale per i filtri selezionati.');
+      }
+    }
   }
 
   async queryPage(cursor) {

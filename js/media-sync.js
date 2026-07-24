@@ -1,4 +1,4 @@
-import { LIMITS, STORE_NAMES } from './config.js?v=1.7.0';
+import { LIMITS, STORE_NAMES } from './config.js?v=1.8.1';
 import {
   completeMediaCentralSync,
   deleteMediaSyncRecord,
@@ -8,13 +8,13 @@ import {
   getRecord,
   setMediaContentHash,
   updateMediaSyncRecord,
-} from './db.js?v=1.7.0';
+} from './db.js?v=1.8.1';
 import {
   completeRemoteMediaUpload,
   createRemoteMediaUploadSession,
-} from './media-api.js?v=1.7.0';
-import { sha256Blob } from './file-hash.js?v=1.7.0';
-import { isConnectivityError } from './remote-auth.js?v=1.7.0';
+} from './media-api.js?v=1.8.1';
+import { sha256Blob } from './file-hash.js?v=1.8.1';
+import { isConnectivityError } from './remote-auth.js?v=1.8.1';
 
 const RANGE_UNIT = 320 * 1024;
 const MAX_CHUNK_BYTES = 60 * 1024 * 1024 - RANGE_UNIT;

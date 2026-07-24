@@ -1,10 +1,10 @@
 # Cantiere Media PWA
 
-Versione 1.7.0.
+Versione 1.8.1.
 
 Le intestazioni dei gruppi cantieri nei selettori sono evidenziate con la palette rossa aziendale per una lettura piu immediata.
 
-PWA mobile-first per acquisire, importare e consultare foto e video dei cantieri. Autenticazione e cantieri sono centralizzati nel backend Azure; gli originali vengono salvati subito sul dispositivo per l'uso offline e poi copiati automaticamente nella cartella OneDrive del cantiere. La priorita operativa e il caricamento: dopo il login l'utente trova immediatamente il cantiere e i tre comandi `Scatta foto`, `Registra video` e `Scegli dalla galleria`.
+PWA mobile-first per acquisire, importare e consultare foto e video dei cantieri. Autenticazione, cantieri e indice dei media sono centralizzati nel backend Azure; gli originali vengono salvati subito sul dispositivo per l'uso offline e poi copiati automaticamente nella cartella OneDrive del cantiere. La priorita operativa e il caricamento: dopo il login l'utente trova immediatamente il cantiere e i tre comandi `Scatta foto`, `Registra video` e `Scegli dalla galleria`.
 
 Il progetto usa HTML, CSS e JavaScript Vanilla. Dopo il primo caricamento dell'application shell, login, dati e media locali funzionano offline.
 
@@ -16,7 +16,7 @@ Dopo un accesso PIN corretto, la sessione resta attiva sul dispositivo anche chi
 
 ## Cantieri centralizzati
 
-La versione 1.7.0 sincronizza lo stesso elenco cantieri tra tutti i dispositivi autorizzati. I cantieri locali già presenti vengono migrati automaticamente senza cancellare foto o video. Creazione, modifica ed eliminazione funzionano anche offline: l'operazione resta in attesa e viene inviata al backend quando torna la connessione. I preferiti sono sincronizzati per utente e restano indipendenti tra Caricamento e Archivio.
+Dalla versione 1.6.0 l'app sincronizza lo stesso elenco cantieri tra tutti i dispositivi autorizzati. I cantieri locali già presenti vengono migrati automaticamente senza cancellare foto o video. Creazione, modifica ed eliminazione funzionano anche offline: l'operazione resta in attesa e viene inviata al backend quando torna la connessione. I preferiti sono sincronizzati per utente e restano indipendenti tra Caricamento e Archivio.
 
 Il nome della cartella OneDrive viene inizialmente fissato uguale al nome del cantiere e rimane stabile anche se cambia lo stato del cantiere.
 
@@ -26,7 +26,11 @@ Ogni foto o video viene prima salvato integralmente in IndexedDB. La coda `media
 
 I media gia presenti sul dispositivo al passaggio alla versione 1.7.0 vengono messi automaticamente in coda. La deduplicazione centrale usa cantiere e SHA-256, quindi due dispositivi non creano una seconda copia dello stesso contenuto nello stesso cantiere. Lo stesso file resta invece ammesso in cantieri differenti.
 
-La release 1.7.0 crea il backup OneDrive ma non scarica automaticamente sul secondo dispositivo l'intero archivio remoto. L'eliminazione dall'Archivio rimuove la copia locale; il file gia caricato resta su OneDrive.
+## Archivio aziendale centralizzato
+
+La versione 1.8.1 sincronizza nell'Archivio i metadati di foto e video caricati da tutti i dispositivi autorizzati. La PWA scarica e conserva localmente le miniature, mentre apre l'originale direttamente da OneDrive tramite un collegamento temporaneo. Non viene duplicato automaticamente sul dispositivo l'intero archivio aziendale.
+
+I file acquisiti sul dispositivo restano disponibili offline. Per aprire, condividere o scaricare un file presente soltanto nell'archivio centrale serve Internet. L'eliminazione autorizzata e definitiva: rimuove il file da OneDrive e propaga la rimozione agli altri dispositivi.
 
 ## Controllo duplicati
 
@@ -57,7 +61,7 @@ Non aprire direttamente `index.html` con `file://`: moduli ES, Service Worker, W
 3. Nella schermata `Carica`, selezionare il cantiere.
 4. Toccare direttamente `Scatta foto`, `Registra video` oppure `Scegli dalla galleria`.
 5. Controllare il riquadro OneDrive: il salvataggio locale e immediato, mentre la copia aziendale puo proseguire in background.
-6. Aprire `Archivio` soltanto quando serve consultare il materiale locale.
+6. Aprire `Archivio` per sincronizzare e consultare il materiale aziendale del cantiere selezionato.
 
 La schermata iniziale non legge foto, video o miniature. Una query dell'Archivio parte soltanto quando l'utente lo apre e ha selezionato un cantiere.
 
@@ -102,7 +106,7 @@ Su PC il selettore cantieri si apre centrato nello schermo, con altezza limitata
 - cantieri attivi o conclusi, con doppia conferma di eliminazione;
 - upload foto, video e selezione multipla dalla galleria;
 - data foto da EXIF JPEG, poi data file, poi data upload;
-- limite video di 60 secondi e 100 MB;
+- limite video di 180 secondi e 500 MB;
 - filtri indicizzati per cantiere, tipo, autore e data;
 - galleria per data con pinch zoom della griglia;
 - viewer fullscreen con swipe, pinch zoom vincolato ai bordi, doppio tap avanti/indietro, ripristino esatto a `1x` e controlli video applicativi;
@@ -121,7 +125,7 @@ Su PC il selettore cantieri si apre centrato nello schermo, con altezza limitata
 - `media`: soli metadati indicizzati.
 - `mediaBlobs`: file originali.
 - `thumbnails`: miniature generate su richiesta.
-- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.7.0.
+- `favorites`: store storico mantenuto per compatibilita con dati di release precedenti; non e esposto nell'interfaccia 1.8.1.
 - `settings`: impostazioni tecniche, controllo tentativi PIN e cantieri preferiti per utente e contesto.
 
 Le query dell'Archivio usano indici composti e cursori discendenti. Non viene eseguito un caricamento completo dei media per poi filtrarli.
@@ -163,7 +167,7 @@ Il Service Worker controlla gli aggiornamenti all'avvio e quando l'app torna vis
 
 ## Vincoli operativi
 
-Foto e video restano disponibili nel browser/dispositivo che li ha acquisiti e vengono anche copiati su OneDrive. L'Archivio della PWA non scarica ancora automaticamente i file caricati da altri dispositivi. La quantita di originali conservabili localmente dipende dalla quota concessa dal browser, dallo spazio libero e dalle politiche del sistema operativo.
+Foto e video acquisiti localmente restano nel browser/dispositivo e vengono anche copiati su OneDrive. L'Archivio riceve dagli altri dispositivi metadati e miniature, ma non scarica automaticamente tutti gli originali: per aprire un file esclusivamente centrale serve Internet. La quantita di originali e miniature conservabili localmente dipende dalla quota concessa dal browser, dallo spazio libero e dalle politiche del sistema operativo.
 
 Il parser EXIF interno legge JPEG. HEIC/HEIF e alcune varianti di metadati devono essere collaudate sui dispositivi scelti dall'impresa.
 

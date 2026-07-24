@@ -1,17 +1,18 @@
-import { LIMITS, MEDIA_TYPES, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.7.0';
+import { LIMITS, MEDIA_TYPES, SITE_STATUSES, STORE_NAMES } from './config.js?v=1.8.1';
 import {
   deleteMediaAuthorizedBatch,
   getMediaBlob,
   getMediaBySiteAndContentHash,
   getMediaCandidatesBySiteTypeAndSize,
+  getMediaMany,
   getRecord,
   getThumbnailBlob,
   putMediaWithBlob,
   putThumbnailBlob,
   setMediaContentHash,
-} from './db.js?v=1.7.0';
-import { readExifDate } from './exif.js?v=1.7.0';
-import { sha256Blob } from './file-hash.js?v=1.7.0';
+} from './db.js?v=1.8.1';
+import { readExifDate } from './exif.js?v=1.8.1';
+import { sha256Blob } from './file-hash.js?v=1.8.1';
 import {
   createId,
   fileExtension,
@@ -19,7 +20,13 @@ import {
   formatDateTime,
   formatDuration,
   isQuotaError,
-} from './utils.js?v=1.7.0';
+} from './utils.js?v=1.8.1';
+import {
+  clearRemoteMediaAccessCache,
+  deleteRemoteMedia,
+  getRemoteMediaAccess,
+  getRemoteMediaThumbnail,
+} from './media-api.js?v=1.8.1';
 
 const thumbnailJobs = new Map();
 const thumbnailQueue = [];
@@ -410,6 +417,48 @@ function enqueueThumbnail(task) {
   });
 }
 
+async function fetchRemoteBlob(url, { timeoutMs = 60000 } = {}) {
+  if (!url) throw new Error('Collegamento temporaneo al file non disponibile.');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      credentials: 'omit',
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error(`Download del file non riuscito (${response.status}).`);
+    return response.blob();
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Download del file scaduto. Riprova con una connessione stabile.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function remoteThumbnail(media) {
+  if (!navigator.onLine) throw new Error('Anteprima centrale non disponibile offline.');
+
+  try {
+    const proxied = await getRemoteMediaThumbnail(media);
+    if (media.mediaType === MEDIA_TYPES.PHOTO) {
+      return generatePhotoThumbnail(proxied);
+    }
+    return proxied;
+  } catch {
+    const access = await getRemoteMediaAccess(media, { force: true });
+    if (access.thumbnailUrl) return fetchRemoteBlob(access.thumbnailUrl, { timeoutMs: 30000 });
+    if (media.mediaType === MEDIA_TYPES.PHOTO && access.downloadUrl) {
+      const original = await fetchRemoteBlob(access.downloadUrl, { timeoutMs: 60000 });
+      return generatePhotoThumbnail(original);
+    }
+    throw new Error('Anteprima centrale non disponibile.');
+  }
+}
+
 export async function getOrCreateThumbnail(media) {
   const cached = await getThumbnailBlob(media.id);
   if (cached) return cached;
@@ -419,16 +468,23 @@ export async function getOrCreateThumbnail(media) {
     const secondCheck = await getThumbnailBlob(media.id);
     if (secondCheck) return secondCheck;
     const original = await getMediaBlob(media.id);
-    if (!original) throw new Error('File originale non trovato.');
     let thumbnail;
+    let cacheThumbnail = true;
     try {
-      thumbnail = media.mediaType === MEDIA_TYPES.VIDEO
-        ? await generateVideoThumbnail(original)
-        : await generatePhotoThumbnail(original);
+      if (original) {
+        thumbnail = media.mediaType === MEDIA_TYPES.VIDEO
+          ? await generateVideoThumbnail(original)
+          : await generatePhotoThumbnail(original);
+      } else if (media.centralSynced || media.centralOnly) {
+        thumbnail = await remoteThumbnail(media);
+      } else {
+        throw new Error('File originale non trovato.');
+      }
     } catch {
       thumbnail = placeholderThumbnail(media.mediaType);
+      cacheThumbnail = Boolean(original);
     }
-    await putThumbnailBlob(media.id, thumbnail);
+    if (cacheThumbnail) await putThumbnailBlob(media.id, thumbnail);
     return thumbnail;
   }).finally(() => thumbnailJobs.delete(media.id));
 
@@ -436,13 +492,47 @@ export async function getOrCreateThumbnail(media) {
   return job;
 }
 
-export async function getMediaFile(media) {
-  const blob = await getMediaBlob(media.id);
-  if (!blob) throw new Error('File non trovato nel dispositivo.');
-  return new File([blob], media.fileName, {
-    type: media.mimeType || blob.type,
-    lastModified: media.takenAt || media.uploadDate,
+function fileFromBlob(media, blob) {
+  return new File([blob], media.fileName || media.oneDriveFileName || 'media', {
+    type: media.mimeType || blob.type || 'application/octet-stream',
+    lastModified: media.takenAt || media.uploadDate || Date.now(),
   });
+}
+
+export async function getMediaPlaybackSource(media) {
+  const blob = await getMediaBlob(media.id);
+  if (blob) {
+    return {
+      url: URL.createObjectURL(fileFromBlob(media, blob)),
+      revocable: true,
+      local: true,
+    };
+  }
+  if (!(media.centralSynced || media.centralOnly)) {
+    throw new Error('File non trovato nel dispositivo.');
+  }
+  if (!navigator.onLine) {
+    throw new Error('Questo file è nell’archivio aziendale e richiede una connessione Internet.');
+  }
+  const access = await getRemoteMediaAccess(media);
+  if (!access.downloadUrl) throw new Error('File centrale temporaneamente non disponibile.');
+  return { url: access.downloadUrl, revocable: false, local: false };
+}
+
+export async function getMediaFile(media) {
+  const localBlob = await getMediaBlob(media.id);
+  if (localBlob) return fileFromBlob(media, localBlob);
+  if (!(media.centralSynced || media.centralOnly)) {
+    throw new Error('File non trovato nel dispositivo.');
+  }
+  if (!navigator.onLine) {
+    throw new Error('Questo file è nell’archivio aziendale e richiede una connessione Internet.');
+  }
+  const access = await getRemoteMediaAccess(media);
+  const remoteBlob = await fetchRemoteBlob(access.downloadUrl, {
+    timeoutMs: media.mediaType === MEDIA_TYPES.VIDEO ? 180000 : 60000,
+  });
+  return fileFromBlob(media, remoteBlob);
 }
 
 export function partitionMediaByType(items) {
@@ -486,15 +576,36 @@ export async function deleteMediaItems(actor, mediaIds) {
   if (!actor?.id) throw new Error('Sessione non valida.');
   const uniqueIds = [...new Set(mediaIds.filter(Boolean))];
   const result = { deleted: [], denied: [], missing: [] };
+  const records = await getMediaMany(uniqueIds);
+  const byId = new Map(records.filter(Boolean).map((item) => [item.id, item]));
 
-  for (let offset = 0; offset < uniqueIds.length; offset += LIMITS.MEDIA_DELETE_BATCH_SIZE) {
-    const batch = uniqueIds.slice(offset, offset + LIMITS.MEDIA_DELETE_BATCH_SIZE);
+  for (const mediaId of uniqueIds) {
+    const media = byId.get(mediaId);
+    if (!media) {
+      result.missing.push(mediaId);
+      continue;
+    }
+
     try {
-      const batchResult = await deleteMediaAuthorizedBatch(actor.id, batch, Date.now());
-      result.deleted.push(...batchResult.deleted);
-      result.denied.push(...batchResult.denied);
-      result.missing.push(...batchResult.missing);
+      if (media.centralSynced === true || media.centralOnly === true) {
+        if (!navigator.onLine) {
+          const error = new Error('Per eliminare un file già sincronizzato serve una connessione Internet.');
+          error.code = 'NETWORK_REQUIRED';
+          throw error;
+        }
+        await deleteRemoteMedia(media);
+        clearRemoteMediaAccessCache(media);
+      }
+
+      const localResult = await deleteMediaAuthorizedBatch(actor.id, [mediaId], Date.now());
+      result.deleted.push(...localResult.deleted);
+      result.denied.push(...localResult.denied);
+      result.missing.push(...localResult.missing);
     } catch (error) {
+      if (error?.code === 'MEDIA_DELETE_FORBIDDEN') {
+        result.denied.push(mediaId);
+        continue;
+      }
       error.deletionResult = result;
       throw error;
     }
